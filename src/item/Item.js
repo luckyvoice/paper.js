@@ -24,7 +24,83 @@
  * is unique to their type, but share the underlying properties and functions
  * that they inherit from Item.
  */
-var Item = this.Item = Base.extend(/** @lends Item# */{
+var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
+	_events: new function() {
+
+		// Flags defining which native events are required by which Paper events
+		// as required for counting amount of necessary natives events.
+		// The mapping is native -> virtual
+		var mouseFlags = {
+			mousedown: {
+				mousedown: 1,
+				mousedrag: 1,
+				click: 1,
+				doubleclick: 1
+			},
+			mouseup: {
+				mouseup: 1,
+				mousedrag: 1,
+				click: 1,
+				doubleclick: 1
+			},
+			mousemove: {
+				mousedrag: 1,
+				mousemove: 1,
+				mouseenter: 1,
+				mouseleave: 1
+			}
+		};
+
+		// Entry for all mouse events in the _events list
+		var mouseEvent = {
+			install: function(type) {
+				// If the view requires counting of installed mouse events,
+				// increase the counters now according to mouseFlags
+				var counters = this._project.view._eventCounters;
+				if (counters) {
+					for (var key in mouseFlags) {
+						counters[key] = (counters[key] || 0)
+								+ (mouseFlags[key][type] || 0);
+					}
+				}
+			},
+			uninstall: function(type) {
+				// If the view requires counting of installed mouse events,
+				// decrease the counters now according to mouseFlags
+				var counters = this._project.view._eventCounters;
+				if (counters) {
+					for (var key in mouseFlags)
+						counters[key] -= mouseFlags[key][type] || 0;
+				}
+			}
+		};
+
+		var onFrameItems = [];
+		function onFrame(event) {
+			for (var i = 0, l = onFrameItems.length; i < l; i++)
+				onFrameItems[i].fire('frame', event);
+		}
+
+		return Base.each(['onMouseDown', 'onMouseUp', 'onMouseDrag', 'onClick',
+			'onDoubleClick', 'onMouseMove', 'onMouseEnter', 'onMouseLeave'],
+			function(name) {
+				this[name] = mouseEvent;
+			}, {
+				onFrame: {
+					install: function() {
+						if (!onFrameItems.length)
+							this._project.view.attach('frame', onFrame);
+						onFrameItems.push(this);
+					},
+					uninstall: function() {
+						onFrameItems.splice(onFrameItems.indexOf(this), 1);
+						if (!onFrameItems.length)
+							this._project.view.detach('frame', onFrame);
+					}
+				}
+			});
+	},
+
 	initialize: function() {
 		// Define this Item's unique id.
 		this._id = ++Item._id;
@@ -487,8 +563,6 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 		return this._parent;
 	},
 
-	// DOCS: add comment to Item#children about not playing around with the
-	// array directly - use addChild etc instead.
 	/**
 	 * The children items contained within this item. Items that define a
 	 * {@link #name} can also be accessed by name.
@@ -731,8 +805,6 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	 * {@link Item#guide} set to {@code true}.
 	 * <b>options.selected:</b> {@code Boolean} - Only hit selected items.
 	 *
-	 * @name Item#hitTest
-	 * @function
 	 * @param {Point} point The point where the hit test should be performed
 	 * @param {Object} [options={ fill: true, stroke: true, segments: true,
 	 * tolerance: 2 }]
@@ -820,6 +892,8 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 			Base.splice(this._children, [item], index, 0);
 			item._parent = this;
 			item._setProject(this._project);
+			// Setting the name again makes sure all name lookup structures are
+			// kept in sync.
 			if (item._name)
 				item.setName(item._name);
 			this._changed(Change.HIERARCHY);
@@ -986,14 +1060,11 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	 * @return {Item[]} an array containing the removed items
 	 */
 	/**
-	 * Removes all of the item's {@link #children} (if any).
-	 *
-	 * @return {Item[]} an array containing the removed items
-	 */
-	/**
 	 * Removes the children from the specified {@code from} index to the
 	 * {@code to} index from the parent's {@link #children} array.
 	 *
+	 * @name Item#removeChildren
+	 * @function
 	 * @param {Number} from the beginning index, inclusive
 	 * @param {Number} [to=children.length] the ending index, exclusive
 	 * @return {Item[]} an array containing the removed items
@@ -1002,7 +1073,7 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 		if (!this._children)
 			return null;
 		from = from || 0;
-	 	to = Base.pick(to, this._children.length);
+		to = Base.pick(to, this._children.length);
 		var removed = this._children.splice(from, to - from);
 		for (var i = removed.length - 1; i >= 0; i--)
 			removed[i]._remove(true, false);
@@ -1181,7 +1252,7 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	 * Loops through all children, gets their bounds and finds the bounds around
 	 * all of them.
 	 */
-	_getBounds: function(getter, cacheName, args) {
+	_getBounds: function(getter, cacheName, matrix) {
 		// Note: We cannot cache these results here, since we do not get
 		// _changed() notifications here for changing geometry in children.
 		// But cacheName is used in sub-classes such as PlacedItem.
@@ -1197,7 +1268,7 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 		for (var i = 0, l = children.length; i < l; i++) {
 			var child = children[i];
 			if (child._visible) {
-				var rect = child[getter](args[0]);
+				var rect = child[getter](matrix);
 				x1 = Math.min(rect.x, x1);
 				y1 = Math.min(rect.y, y1);
 				x2 = Math.max(rect.x + rect.width, x2);
@@ -1224,7 +1295,7 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	 * @bean
 	 */
 	getBounds: function(/* matrix */) {
-		return this._getBounds('getBounds', '_bounds', arguments);
+		return this._getBounds('getBounds', '_bounds', arguments[0]);
 	},
 
 	setBounds: function(rect) {
@@ -1255,7 +1326,7 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	 * @bean
 	 */
 	getStrokeBounds: function(/* matrix */) {
-		return this._getBounds('getStrokeBounds', '_strokeBounds', arguments);
+		return this._getBounds('getStrokeBounds', '_strokeBounds', arguments[0]);
 	},
 
 	/**
@@ -1265,7 +1336,7 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	 * @bean
 	 */
 	getHandleBounds: function(/* matrix */) {
-		return this._getBounds('getHandleBounds', '_handleBounds', arguments);
+		return this._getBounds('getHandleBounds', '_handleBounds', arguments[0]);
 	},
 
 	/**
@@ -1277,7 +1348,7 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	 * @ignore
 	 */
 	getRoughBounds: function(/* matrix */) {
-		return this._getBounds('getRoughBounds', '_roughBounds', arguments);
+		return this._getBounds('getRoughBounds', '_roughBounds', arguments[0]);
 	},
 
 	/**
@@ -1285,9 +1356,9 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	 *
 	 * The color of the stroke.
 	 *
-	 * @property
 	 * @name Item#strokeColor
-	 * @type RGBColor|HSBColor|HSLColor|GrayColor
+	 * @property
+	 * @type RgbColor|HsbColor|HslColor|GrayColor
 	 *
 	 * @example {@paperscript}
 	 * // Setting the stroke color of a path:
@@ -1297,14 +1368,14 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	 * var circle = new Path.Circle(new Point(80, 50), 35);
 	 *
 	 * // Set its stroke color to RGB red:
-	 * circle.strokeColor = new RGBColor(1, 0, 0);
+	 * circle.strokeColor = new RgbColor(1, 0, 0);
 	 */
 
 	/**
 	 * The width of the stroke.
 	 *
-	 * @property
 	 * @name Item#strokeWidth
+	 * @property
 	 * @type Number
 	 *
 	 * @example {@paperscript}
@@ -1325,8 +1396,8 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	 * The shape to be used at the end of open {@link Path} items, when they
 	 * have a stroke.
 	 *
-	 * @property
 	 * @name Item#strokeCap
+	 * @property
 	 * @default 'butt'
 	 * @type String('round', 'square', 'butt')
 	 *
@@ -1357,8 +1428,8 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	/**
 	 * The shape to be used at the corners of paths when they have a stroke.
 	 *
-	 * @property
 	 * @name Item#strokeJoin
+	 * @property
 	 * @default 'miter'
 	 * @type String ('miter', 'round', 'bevel')
 	 *
@@ -1387,8 +1458,8 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	/**
 	 * The dash offset of the stroke.
 	 *
-	 * @property
 	 * @name Item#dashOffset
+	 * @property
 	 * @default 0
 	 * @type Number
 	 */
@@ -1404,8 +1475,8 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	 * // Set the dashed stroke to [10pt dash, 4pt gap]:
 	 * path.dashArray = [10, 4];
 	 *
-	 * @property
 	 * @name Item#dashArray
+	 * @property
 	 * @default []
 	 * @type Array
 	 */
@@ -1418,8 +1489,8 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	 * miterLimit imposes a limit on the ratio of the miter length to the
 	 * {@link Item#strokeWidth}.
 	 *
-	 * @property
 	 * @default 10
+	 * @property
 	 * @name Item#miterLimit
 	 * @type Number
 	 */
@@ -1429,9 +1500,9 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	 *
 	 * The fill color of the item.
 	 *
-	 * @property
 	 * @name Item#fillColor
-	 * @type RGBColor|HSBColor|HSLColor|GrayColor
+	 * @property
+	 * @type RgbColor|HsbColor|HslColor|GrayColor
 	 *
 	 * @example {@paperscript}
 	 * // Setting the fill color of a path to red:
@@ -1441,7 +1512,7 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	 * var circle = new Path.Circle(new Point(80, 50), 35);
 	 *
 	 * // Set the fill color of the circle to RGB red:
-	 * circle.fillColor = new RGBColor(1, 0, 0);
+	 * circle.fillColor = new RgbColor(1, 0, 0);
 	 */
 
 	// DOCS: document the different arguments that this function can receive.
@@ -1624,8 +1695,13 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 		// and transform the cached _bounds and _position without having to
 		// fully recalculate each time.
 		if (bounds && matrix.getRotation() % 90 === 0) {
-			this._bounds = this._createBounds(
-					matrix._transformBounds(bounds));
+			// Transform the old _bounds without notifying it of changes
+			this._bounds = matrix._transformBounds(bounds, bounds, true);
+			// Update _position again, by linking it to _bounds
+			// TODO: If LinkedPoint would not just sync writes, but reads too,
+			// we could do this: this._position = position;
+			// This is a bug currently in Paper.js, that should be fixed, but
+			// can only really be handled properly using versioning...
 			this._position = this._bounds.getCenter();
 		} else if (position) {
 			// Transform position as well. Do not notify _position of
@@ -1742,7 +1818,6 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 		draw: function(item, ctx, param) {
 			if (!item._visible || item._opacity == 0)
 				return;
-
 			var tempCanvas, parentCtx;
 			// If the item has a blendMode or is defining an opacity, draw it on
 			// a temporary canvas first and composite the canvas afterwards.
@@ -1757,21 +1832,17 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 				var bounds = item.getStrokeBounds() || item.getBounds();
 				if (!bounds.width || !bounds.height)
 					return;
-
 				// Floor the offset and ceil the size, so we don't cut off any
 				// antialiased pixels when drawing onto the temporary canvas.
 				var itemOffset = bounds.getTopLeft().floor(),
 					size = bounds.getSize().ceil().add(new Size(1, 1));
 				tempCanvas = CanvasProvider.getCanvas(size);
-
 				// Save the parent context, so we can draw onto it later
 				parentCtx = ctx;
-
 				// Set ctx to the context of the temporary canvas,
 				// so we draw onto it, instead of the parentCtx
 				ctx = tempCanvas.getContext('2d');
 				ctx.save();
-
 				// Translate the context so the topLeft of the item is at (0, 0)
 				// on the temporary canvas.
 				ctx.translate(-itemOffset.x, -itemOffset.y);
@@ -1784,15 +1855,12 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 			item.draw(ctx, param);
 			if (itemOffset)
 				param.offset = savedOffset;
-
 			// If we created a temporary canvas before, composite it onto the
 			// parent canvas:
 			if (tempCanvas) {
-
 				// Restore the temporary canvas to its state before the
 				// translation matrix was applied above.
 				ctx.restore();
-
 				// If the item has a blendMode, use BlendMode#process to
 				// composite its canvas on the parentCanvas.
 				if (item._blendMode !== 'normal') {
@@ -1810,13 +1878,18 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 							itemOffset.x, itemOffset.y);
 					parentCtx.restore();
 				}
-
 				// Return the temporary canvas, so it can be reused
 				CanvasProvider.returnCanvas(tempCanvas);
 			}
 		}
 	}
-}, new function() {
+}, Base.each(['down', 'drag', 'up', 'move'], function(name) {
+	this['removeOn' + Base.capitalize(name)] = function() {
+		var hash = {};
+		hash[name] = true;
+		return this.removeOn(hash);
+	};
+}, /** @lends Item# */{
 	/**
 	 * {@grouptitle Remove On Event}
 	 *
@@ -1930,67 +2003,16 @@ var Item = this.Item = Base.extend(/** @lends Item# */{
 	 * 	path.removeOnUp();
 	 * }
 	 */
-
-	var sets = {
-		down: {}, drag: {}, up: {}, move: {}
-	};
-
-	function removeAll(set) {
-		for (var id in set) {
-			var item = set[id];
-			item.remove();
-			for (var type in sets) {
-				var other = sets[type];
-				if (other != set && other[item.getId()])
-					delete other[item.getId()];
-			}
-		}
-	}
-
-	function installHandler(name) {
-		var handler = 'onMouse' + Base.capitalize(name);
-		// Inject a onMouse handler that performs all the behind the scene magic
-		// and calls the script's handler at the end, if defined.
-		var func = paper.tool[handler];
-		if (!func || !func._installed) {
-			var hash = {};
-			hash[handler] = function(event) {
-				// Always clear the drag set on mouseup
-				if (name === 'up')
-					sets.drag = {};
-				removeAll(sets[name]);
-				sets[name] = {};
-				// Call the script's overridden handler, if defined
-				if (this.base)
-					this.base(event);
-			};
-			paper.tool.inject(hash);
-			// Only install this handler once, and mark it as installed,
-			// to prevent repeated installing.
-			paper.tool[handler]._installed = true;
-		}
-	}
-
 	// TODO: implement Item#removeOnFrame
-	return Base.each(['down', 'drag', 'up', 'move'], function(name) {
-		this['removeOn' + Base.capitalize(name)] = function() {
-			var hash = {};
-			hash[name] = true;
-			return this.removeOn(hash);
-		};
-	}, {
-		removeOn: function(obj) {
-			for (var name in obj) {
-				if (obj[name]) {
-					sets[name][this.getId()] = this;
-					// Since the drag set gets cleared in up, we need to make
-					// sure it's installed too
-					if (name === 'drag')
-						installHandler('up');
-					installHandler(name);
-				}
+	removeOn: function(obj) {
+		for (var name in obj) {
+			if (obj[name]) {
+				var key = 'mouse' + name,
+					sets = Tool._removeSets = Tool._removeSets || {};
+				sets[key] = sets[key] || {};
+				sets[key][this.getId()] = this;
 			}
-			return this;
 		}
-	});
-});
+		return this;
+	}
+}));

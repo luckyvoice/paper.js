@@ -30,7 +30,7 @@
  *
  * @classexample {@paperscript}
  * var circleStyle = {
- * 	fillColor: new RGBColor(1, 0, 0),
+ * 	fillColor: new RgbColor(1, 0, 0),
  * 	strokeColor: 'black',
  * 	strokeWidth: 5
  * };
@@ -75,9 +75,9 @@ var PathStyle = this.PathStyle = Style.extend(/** @lends PathStyle# */{
 	 *
 	 * The color of the stroke.
 	 *
-	 * @property
 	 * @name PathStyle#strokeColor
-	 * @type RGBColor|HSBColor|HSLColor|GrayColor
+	 * @property
+	 * @type RgbColor|HsbColor|HslColor|GrayColor
 	 *
 	 * @example {@paperscript}
 	 * // Setting the stroke color of a path:
@@ -87,14 +87,14 @@ var PathStyle = this.PathStyle = Style.extend(/** @lends PathStyle# */{
 	 * var circle = new Path.Circle(new Point(80, 50), 35);
 	 *
 	 * // Set its stroke color to RGB red:
-	 * circle.strokeColor = new RGBColor(1, 0, 0);
+	 * circle.strokeColor = new RgbColor(1, 0, 0);
 	 */
 
 	/**
 	 * The width of the stroke.
 	 *
-	 * @property
 	 * @name PathStyle#strokeWidth
+	 * @property
 	 * @default 1
 	 * @type Number
 	 *
@@ -116,8 +116,8 @@ var PathStyle = this.PathStyle = Style.extend(/** @lends PathStyle# */{
 	 * The shape to be used at the end of open {@link Path} items, when they
 	 * have a stroke.
 	 *
-	 * @property
 	 * @name PathStyle#strokeCap
+	 * @property
 	 * @default 'butt'
 	 * @type String('round', 'square', 'butt')
 	 *
@@ -148,8 +148,8 @@ var PathStyle = this.PathStyle = Style.extend(/** @lends PathStyle# */{
 	/**
 	 * The shape to be used at the corners of paths when they have a stroke.
 	 *
-	 * @property
 	 * @name PathStyle#strokeJoin
+	 * @property
 	 * @default 'miter'
 	 * @type String ('miter', 'round', 'bevel')
 	 *
@@ -177,8 +177,8 @@ var PathStyle = this.PathStyle = Style.extend(/** @lends PathStyle# */{
 	/**
 	 * The dash offset of the stroke.
 	 *
-	 * @property
 	 * @name PathStyle#dashOffset
+	 * @property
 	 * @default 0
 	 * @type Number
 	 */
@@ -194,8 +194,8 @@ var PathStyle = this.PathStyle = Style.extend(/** @lends PathStyle# */{
 	 * // Set the dashed stroke to [10pt dash, 4pt gap]:
 	 * path.dashArray = [10, 4];
 	 *
-	 * @property
 	 * @name PathStyle#dashArray
+	 * @property
 	 * @default []
 	 * @type Array
 	 */
@@ -207,9 +207,9 @@ var PathStyle = this.PathStyle = Style.extend(/** @lends PathStyle# */{
 	 * far beyond the {@link #strokeWidth} of the path. The miterLimit imposes a
 	 * limit on the ratio of the miter length to the {@link #strokeWidth}.
 	 *
+	 * @name PathStyle#miterLimit
 	 * @property
 	 * @default 10
-	 * @name PathStyle#miterLimit
 	 * @type Number
 	 */
 
@@ -218,9 +218,9 @@ var PathStyle = this.PathStyle = Style.extend(/** @lends PathStyle# */{
 	 *
 	 * The fill color.
 	 *
-	 * @property
 	 * @name PathStyle#fillColor
-	 * @type RGBColor|HSBColor|HSLColor|GrayColor
+	 * @property
+	 * @type RgbColor|HsbColor|HslColor|GrayColor
 	 *
 	 * @example {@paperscript}
 	 * // Setting the fill color of a path to red:
@@ -230,6 +230,6 @@ var PathStyle = this.PathStyle = Style.extend(/** @lends PathStyle# */{
 	 * var circle = new Path.Circle(new Point(80, 50), 35);
 	 *
 	 * // Set the fill color of the circle to RGB red:
-	 * circle.fillColor = new RGBColor(1, 0, 0);
+	 * circle.fillColor = new RgbColor(1, 0, 0);
 	 */
 });

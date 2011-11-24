@@ -222,7 +222,7 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 	 * effects.
 	 *
 	 * @param {Path|Rectangle|Point} object
-	 * @return {RGBColor} the average color contained in the area covered by the
+	 * @return {RgbColor} the average color contained in the area covered by the
 	 * specified path, rectangle or point.
 	 */
 	getAverageColor: function(object) {
@@ -294,7 +294,7 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 	 * @function
 	 * @param x the x offset of the pixel in pixel coordinates
 	 * @param y the y offset of the pixel in pixel coordinates
-	 * @return {RGBColor} the color of the pixel
+	 * @return {RgbColor} the color of the pixel
 	 */
 	/**
 	 * Gets the color of a pixel in the raster.
@@ -302,7 +302,7 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 	 * @name Raster#getPixel
 	 * @function
 	 * @param point the offset of the pixel as a point in pixel coordinates
-	 * @return {RGBColor} the color of the pixel
+	 * @return {RgbColor} the color of the pixel
 	 */
 	getPixel: function(point) {
 		point = Point.read(arguments);
@@ -310,7 +310,7 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 			channels = new Array(4);
 		for (var i = 0; i < 4; i++)
 			channels[i] = pixels[i] / 255;
-		return RGBColor.read(channels);
+		return RgbColor.read(channels);
 	},
 
 	/**
@@ -388,6 +388,7 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 
 	// Since Raster doesn't make the distinction between the different bounds,
 	// simply redirect to strokeBounds so the cached values can be reused.
+	// TODO: Shouldn't this be moved to PlacedItem
 
 	getHandleBounds: function(/* matrix */) {
 		return this.getStrokeBounds(arguments[0]);
@@ -395,6 +396,20 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 
 	getRoughBounds: function(/* matrix */) {
 		return this.getStrokeBounds(arguments[0]);
+	},
+
+	_hitTest: function(point, options) {
+		point = this._matrix._inverseTransform(point);
+		if (point.isInside(new Rectangle(this._size).setCenter(0, 0))) {
+			var that = this;
+			return new HitResult('pixel', that, {
+				offset: point.add(that._size.divide(2)).round(),
+				// Becomes HitResult#color
+				getColor: function() {
+					return that.getPixel(this.offset);
+				}
+			});
+		}
 	},
 
 	draw: function(ctx, param) {

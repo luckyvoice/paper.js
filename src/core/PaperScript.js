@@ -155,7 +155,7 @@ var PaperScript = this.PaperScript = new function() {
 	function evaluate(code, scope) {
 		// Set currently active scope.
 		paper = scope;
-		var view = scope.view,
+		var view = scope.project.view,
 			tool = /on(?:Key|Mouse)(?:Up|Down|Move|Drag)/.test(code)
 					&& new Tool(),
 			res;
@@ -169,10 +169,7 @@ var PaperScript = this.PaperScript = new function() {
 			(function() {
 				var onEditOptions, onSelect, onDeselect, onReselect, onMouseDown,
 					onMouseUp, onMouseDrag, onMouseMove, onKeyDown, onKeyUp,
-					onFrame, onResize,
-					handlers = [ 'onEditOptions', 'onSelect', 'onDeselect',
-						'onReselect', 'onMouseDown', 'onMouseUp', 'onMouseDrag',
-						'onMouseMove', 'onKeyDown', 'onKeyUp'];
+					onFrame, onResize;
 				res = eval(compile(code));
 				if (tool) {
 					// We could do this instead to avoid eval(), but it's longer
@@ -186,12 +183,18 @@ var PaperScript = this.PaperScript = new function() {
 					// tool.onMouseMove = onMouseMove;
 					// tool.onKeyDown = onKeyDown;
 					// tool.onKeyUp = onKeyUp;
-					Base.each(handlers, function(key) {
+					Base.each(tool._events, function(key) {
 						tool[key] = eval(key);
 					});
 				}
 				if (view) {
-					view.onResize = onResize;
+					view.setOnResize(onResize);
+					// Fire resize event directly, so any user
+					// defined resize handlers are called.
+					view.fire('resize', {
+						size: view.size,
+						delta: new Point()
+					});
 					view.setOnFrame(onFrame);
 					// Automatically draw view at the end.
 					view.draw();

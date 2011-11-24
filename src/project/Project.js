@@ -44,10 +44,13 @@ var Project = this.Project = PaperScopeItem.extend(/** @lends Project# */{
 	 *
 	 * When working with PaperScript, a project is automatically created for us
 	 * and the {@link PaperScope#project} variable points to it.
+	 *
+	 * @param {View|HTMLCanvasElement} view Either a view object or an HTML
+	 * Canvas element that should be wrapped in a newly created view.
 	 */
-	initialize: function() {
-		// Activate straight away so paper.project is set, as required by
-		// Layer and DoumentView constructors.
+	initialize: function(view) {
+		// Activate straight away by passing true to base(), so paper.project is
+		// set, as required by Layer and DoumentView constructors.
 		this.base(true);
 		this._currentStyle = new PathStyle();
 		this._selectedItems = {};
@@ -55,14 +58,16 @@ var Project = this.Project = PaperScopeItem.extend(/** @lends Project# */{
 		this.layers = [];
 		this.symbols = [];
 		this.activeLayer = new Layer();
+		if (view)
+			this.view = view instanceof View ? view : View.create(view);
 		// Change tracking, not in use for now. Activate once required:
 		// this._changes = [];
 		// this._changesById = {};
 	},
 
 	_needsRedraw: function() {
-		if (this._scope)
-			this._scope._needsRedraw();
+		if (this.view)
+			this.view._redrawNeeded = true;
 	},
 
 	/**
@@ -74,10 +79,21 @@ var Project = this.Project = PaperScopeItem.extend(/** @lends Project# */{
 	 */
 
 	/**
-	 * Removes this project from the {@link PaperScope#projects} list.
-	 *
-	 * @name Project#remove
-	 * @function
+	 * Removes this project from the {@link PaperScope#projects} list, and also
+	 * removes its view, if one was defined.
+	 */
+	remove: function() {
+		if (!this.base())
+			return false;
+		if (this.view)
+			this.view.remove();
+		return true;
+	},
+
+	/**
+	 * The reference to the project's view.
+	 * @name Project#view
+	 * @type View
 	 */
 
 	/**
@@ -184,7 +200,7 @@ var Project = this.Project = PaperScopeItem.extend(/** @lends Project# */{
 	 * <b>options.fill:</b> {@code Boolean} - Hit test the fill of items.
 	 * <b>options.stroke:</b> {@code Boolean} - Hit test the curves of path
 	 * items, taking into account stroke width.
-	 * <b>options.segment:</b> {@code Boolean} - Hit test for
+	 * <b>options.segments:</b> {@code Boolean} - Hit test for
 	 * {@link Segment#point} of {@link Path} items.
 	 * <b>options.handles:</b> {@code Boolean} - Hit test for the handles
 	 * ({@link Segment#handleIn} / {@link Segment#handleOut}) of path segments.
@@ -239,20 +255,6 @@ var Project = this.Project = PaperScopeItem.extend(/** @lends Project# */{
 	 *
 	 * @name Project#symbols
 	 * @type Symbol[]
-	 */
-
-	/**
-	 * The views contained within the project.
-	 *
-	 * @name Project#views
-	 * @type View[]
-	 */
-
-	/**
-	 * The view which is currently active.
-	 *
-	 * @name Project#activeView
-	 * @type View
 	 */
 
 	draw: function(ctx) {

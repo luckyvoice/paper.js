@@ -25,31 +25,29 @@ HitResult = Base.extend(/** @lends HitResult# */{
 	initialize: function(type, item, values) {
 		this.type = type;
 		this.item = item;
-		if (values) {
-			// Copy over passed values, depending on use case.
-			// DOCS: HitResult#location, #segment, #name, #point
-			Base.each(values, function(value, key) {
-				this[key] = value;
-			}, this);
-		}
+		// Inject passed values, so we can be flexible about the HitResult
+		// properties.
+		// This allows the definition of getters too, e.g. for 'pixel'.
+		if (values)
+			this.inject(values);
 	},
 
 	/**
 	 * Describes the type of the hit result. For example, if you hit a segment
 	 * point, the type would be 'segment'.
 	 *
-	 * @property
 	 * @name HitResult#type
+	 * @property
 	 * @type String('segment', 'handle-in', 'handle-out', 'stroke', 'fill',
-	 * 'bounds', 'center')
+	 * 'bounds', 'center', 'pixel')
 	 */
 
 	/**
 	 * If the HitResult has a {@link HitResult#type} of 'bounds', this property
 	 * describes which corner of the bounding rectangle was hit.
 	 *
-	 * @property
 	 * @name HitResult#name
+	 * @property
 	 * @type String('top-left', 'top-right', 'bottom-left', 'bottom-right',
 	 * 'left-center', 'top-center', 'right-center', 'bottom-center')
 	 */
@@ -57,8 +55,8 @@ HitResult = Base.extend(/** @lends HitResult# */{
 	/**
 	 * The item that was hit.
 	 *
-	 * @property
 	 * @name HitResult#item
+	 * @property
 	 * @type Item
 	 */
 
@@ -66,9 +64,18 @@ HitResult = Base.extend(/** @lends HitResult# */{
 	 * If the HitResult has a type of 'stroke', this property gives more
 	 * information about the exact position that was hit on the path.
 	 *
-	 * @property
 	 * @name HitResult#location
+	 * @property
 	 * @type CurveLocation
+	 */
+
+	/**
+	 * If the HitResult has a type of 'pixel', this property refers to the color
+	 * of the pixel on the {@link Raster} that was hit.
+	 *
+	 * @name HitResult#color
+	 * @property
+	 * @type RgbColor
 	 */
 
 	/**
@@ -76,16 +83,17 @@ HitResult = Base.extend(/** @lends HitResult# */{
 	 * 'handle-out', this property refers to the Segment that was hit or that
 	 * is closest to the hitResult.location on the curve.
 	 *
-	 * @property
 	 * @name HitResult#segment
+	 * @property
 	 * @type Segment
 	 */
 
 	/**
-	 * The hit point.
+	 * Describes the actual coordinates of the segment, handle or bounding box
+	 * corner that was hit.
 	 *
-	 * @property
 	 * @name HitResult#point
+	 * @property
 	 * @type Point
 	 */
 

@@ -54,6 +54,7 @@ var paper = new function() {
 /*#*/ include('core/Base.js');
 /*#*/ include('core/PaperScope.js');
 /*#*/ include('core/PaperScopeItem.js');
+/*#*/ include('core/Callback.js');
 
 // Include Paper classes, which are later injected into PaperScope by setting
 // them on the 'this' object, e.g.:
@@ -108,11 +109,13 @@ var paper = new function() {
 /*#*/ } // options.browser
 
 /*#*/ include('ui/View.js');
+/*#*/ include('ui/CanvasView.js');
 
 /*#*/ if (options.browser) {
 /*#*/ include('ui/Event.js');
 /*#*/ include('ui/KeyEvent.js');
 /*#*/ include('ui/Key.js');
+/*#*/ include('ui/MouseEvent.js');
 
 /*#*/ include('tool/ToolEvent.js');
 /*#*/ include('tool/Tool.js');

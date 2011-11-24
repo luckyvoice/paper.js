@@ -46,9 +46,12 @@
  * 	path.add(event.point);
  * }
  */
-var Tool = this.Tool = PaperScopeItem.extend(/** @lends Tool# */{
+var Tool = this.Tool = PaperScopeItem.extend(Callback, /** @lends Tool# */{
 	_list: 'tools',
 	_reference: 'tool',
+	_events: [ 'onEditOptions', 'onSelect', 'onDeselect', 'onReselect',
+			'onMouseDown', 'onMouseUp', 'onMouseDrag', 'onMouseMove',
+			'onKeyDown', 'onKeyUp' ],
 
 	// DOCS: rewrite Tool constructor explanation
 	initialize: function() {
@@ -72,16 +75,6 @@ var Tool = this.Tool = PaperScopeItem.extend(/** @lends Tool# */{
 	 * @name Tool#remove
 	 * @function
 	 */
-
-	/**
-	 * The fixed time delay in milliseconds between each call to the
-	 * {@link #onMouseDrag} event. Setting this to an interval means the
-	 * {@link #onMouseDrag} event is called repeatedly after the initial
-	 * {@link #onMouseDown} until the user releases the mouse.
-	 *
-	 * @type Number
-	 */
-	eventInterval: null,
 
 	/**
 	 * The minimum distance the mouse has to drag before firing the onMouseDrag
@@ -161,9 +154,6 @@ var Tool = this.Tool = PaperScopeItem.extend(/** @lends Tool# */{
 	 * The function to be called when the mouse position changes while the mouse
 	 * is being dragged. The function receives a {@link ToolEvent} object which
 	 * contains information about the mouse event.
-	 *
-	 * This function can also be called periodically while the mouse doesn't
-	 * move by setting the {@link #eventInterval}
 	 *
 	 * @name Tool#onMouseDrag
 	 * @property
@@ -247,7 +237,7 @@ var Tool = this.Tool = PaperScopeItem.extend(/** @lends Tool# */{
 	 * path.fillColor = 'red';
 	 *
 	 * function onKeyDown(event) {
-	 * 	if(event.key == 'space') {
+	 * 	if (event.key == 'space') {
 	 * 		// Scale the path by 110%:
 	 * 		path.scale(1.1);
 	 *
@@ -272,13 +262,13 @@ var Tool = this.Tool = PaperScopeItem.extend(/** @lends Tool# */{
 	 *
 	 * @example
 	 * function onKeyUp(event) {
-	 * 	if(event.key == 'space') {
+	 * 	if (event.key == 'space') {
 	 * 		console.log('The spacebar was released!');
 	 * 	}
 	 * }
 	 */
 
-	updateEvent: function(type, pt, minDistance, maxDistance, start,
+	_updateEvent: function(type, pt, minDistance, maxDistance, start,
 			needsChange, matchMaxDistance) {
 		if (!start) {
 			if (minDistance != null || maxDistance != null) {
@@ -322,17 +312,36 @@ var Tool = this.Tool = PaperScopeItem.extend(/** @lends Tool# */{
 		return true;
 	},
 
-	onHandleEvent: function(type, pt, event) {
+	_onHandleEvent: function(type, pt, event) {
 		// Update global reference to this scope.
 		paper = this._scope;
+		// Handle removeOn* calls first
+		var sets = Tool._removeSets;
+		if (sets) {
+			// Always clear the drag set on mouseup
+			if (type === 'mouseup')
+				sets.mousedrag = null;
+			var set = sets[type];
+			if (set) {
+				for (var id in set) {
+					var item = set[id];
+					for (var key in sets) {
+						var other = sets[key];
+						if (other && other != set && other[item.getId()])
+							delete other[item.getId()];
+					}
+					item.remove();
+				}
+				sets[type] = null;
+			}
+		}
+		// Now handle event callbacks
 		var called = false;
 		switch (type) {
 		case 'mousedown':
-			this.updateEvent(type, pt, null, null, true, false, false);
-			if (this.onMouseDown) {
-				this.onMouseDown(new ToolEvent(this, type, event));
-				called = true;
-			}
+			this._updateEvent(type, pt, null, null, true, false, false);
+			if (this.responds(type))
+				called = this.fire(type, new ToolEvent(this, type, event));
 			break;
 		case 'mousedrag':
 			// In order for idleInterval drag events to work, we need to not
@@ -345,12 +354,10 @@ var Tool = this.Tool = PaperScopeItem.extend(/** @lends Tool# */{
 			// case it is shorter than maxDistance, as this would produce weird
 			// results. matchMaxDistance controls this.
 				matchMaxDistance = false;
-			while (this.updateEvent(type, pt, this.minDistance,
+			while (this._updateEvent(type, pt, this.minDistance,
 					this.maxDistance, false, needsChange, matchMaxDistance)) {
-				if (this.onMouseDrag) {
-					this.onMouseDrag(new ToolEvent(this, type, event));
-					called = true;
-				}
+				if (this.responds(type))
+					called = this.fire(type, new ToolEvent(this, type, event));
 				needsChange = true;
 				matchMaxDistance = true;
 			}
@@ -359,30 +366,25 @@ var Tool = this.Tool = PaperScopeItem.extend(/** @lends Tool# */{
 			// If the last mouse drag happened in a different place, call mouse
 			// drag first, then mouse up.
 			if ((this._point.x != pt.x || this._point.y != pt.y)
-					&& this.updateEvent('mousedrag', pt, this.minDistance,
+					&& this._updateEvent('mousedrag', pt, this.minDistance,
 							this.maxDistance, false, false, false)) {
-				if (this.onMouseDrag) {
-					this.onMouseDrag(new ToolEvent(this, type, event));
-					called = true;
-				}
+				if (this.responds('mousedrag'))
+					called = this.fire('mousedrag',
+							new ToolEvent(this, type, event));
 			}
-			this.updateEvent(type, pt, null, this.maxDistance, false,
+			this._updateEvent(type, pt, null, this.maxDistance, false,
 					false, false);
-			if (this.onMouseUp) {
-				this.onMouseUp(new ToolEvent(this, type, event));
-				called = true;
-			}
+			if (this.responds(type))
+				called = this.fire(type, new ToolEvent(this, type, event));
 			// Start with new values for 'mousemove'
-			this.updateEvent(type, pt, null, null, true, false, false);
+			this._updateEvent(type, pt, null, null, true, false, false);
 			this._firstMove = true;
 			break;
 		case 'mousemove':
-			while (this.updateEvent(type, pt, this.minDistance,
+			while (this._updateEvent(type, pt, this.minDistance,
 					this.maxDistance, this._firstMove, true, false)) {
-				if (this.onMouseMove) {
-					this.onMouseMove(new ToolEvent(this, type, event));
-					called = true;
-				}
+				if (this.responds(type))
+					called = this.fire(type, new ToolEvent(this, type, event));
 				this._firstMove = false;
 			}
 			break;

@@ -215,6 +215,7 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 			}
 			var fillColor = this.getFillColor(),
 				strokeColor = this.getStrokeColor();
+			// Try calling transform on colors in case they are GradientColors.
 			if (fillColor && fillColor.transform)
 				fillColor.transform(matrix);
 			if (strokeColor && strokeColor.transform)
@@ -982,7 +983,6 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 		return null;
 	},
 
-	// DOCS: improve Path#getPointAt documenation.
 	/**
 	 * Get the point on the path at the given offset.
 	 *
@@ -1212,6 +1212,10 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 
 	contains: function(point, matrix) {
 		point = Point.read(arguments);
+		// Note: This only works correctly with even-odd fill rule, or paths
+		// that do not overlap with themselves.
+		// TODO: Find out how to implement the "Point In Polygon" problem for
+		// non-zero fill rule.
 		if (!this._closed || !this.getRoughBounds(matrix)._containsPoint(point))
 			return false;
 		// Use the crossing number algorithm, by counting the crossings of the
@@ -1229,7 +1233,8 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 
 	_hitTest: function(point, options, matrix) {
 		var tolerance = options.tolerance || 0,
-			radius = (options.stroke ? this.getStrokeWidth() / 2 : 0) + tolerance,
+			radius = (options.stroke && this.getStrokeColor()
+					? this.getStrokeWidth() / 2 : 0) + tolerance,
 			loc,
 			res;
 		// If we're asked to query for segments, ends or handles, do all that
@@ -1240,10 +1245,13 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 			segment._transformCoordinates(matrix, coords);
 			for (var j = ends || options.segments ? 0 : 2,
 					m = !ends && options.handles ? 6 : 2; j < m; j += 2) {
-				if (point.getDistance(coords[j], coords[j + 1]) < tolerance)
+				if (point.getDistance(coords[j], coords[j + 1]) < tolerance) {
 					return new HitResult(j == 0 ? 'segment'
-							: 'handle-' + (j == 2 ? 'in' : 'out'),
-							that, { segment: segment });
+							: 'handle-' + (j == 2 ? 'in' : 'out'), that, {
+								segment: segment,
+								point: Point.create(coords[j], coords[j + 1])
+							});
+				}
 			}
 		}
 		if (options.ends && !options.segments && !this._closed) {
@@ -1758,9 +1766,11 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 			return null;
 		var coords = new Array(6),
 			prevCoords = new Array(6);
-		// Make coordinates for first segment available in prevCoords.
+		// If the matrix is an identity transformation, set it to null for
+		// faster processing
 		if (matrix && matrix.isIdentity())
 			matrix = null;
+		// Make coordinates for first segment available in prevCoords.
 		first._transformCoordinates(matrix, prevCoords, false);
 		var min = prevCoords.slice(0, 2),
 			max = min.slice(0), // clone
@@ -1849,6 +1859,11 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 					max[0] - min[0], max[1] - min[1]);
 	}
 
+	/**
+	 * Returns the horizontal and vertical padding that a transformed round
+	 * stroke adds to the bounding box, by calculating the dimensions of a
+	 * rotated ellipse.
+	 */
 	function getPenPadding(radius, matrix) {
 		if (!matrix)
 			return [radius, radius];
@@ -2020,11 +2035,14 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 		 * @ignore
 		 */
 		getHandleBounds: function(/* matrix, stroke, join */) {
-			var matrix = arguments[0],
-				useCache = matrix === undefined;
+			// Do not check for matrix but count parameters to determine if we
+			// can cache or not, as the other parameters have an influence on
+			// that too:
+			var useCache = arguments.length == 0;
 			if (useCache && this._handleBounds)
 				return this._handleBounds;
 			var coords = new Array(6),
+				matrix = arguments[0],
 				stroke = arguments[1] / 2 || 0, // Stroke padding
 				join = arguments[2] / 2 || 0, // Join padding, for miterLimit
 				open = !this._closed,

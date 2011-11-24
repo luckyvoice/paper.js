@@ -28,7 +28,6 @@ var PointText = this.PointText = TextItem.extend(/** @lends PointText# */{
 	 * Creates a point text item
 	 *
 	 * @param {Point} point the position where the text will start
-	 * @param {Boolean} cache whether the text should be cached; improves redraw performance significantly
 	 *
 	 * @example
 	 * var text = new PointText(new Point(50, 100));
@@ -36,19 +35,10 @@ var PointText = this.PointText = TextItem.extend(/** @lends PointText# */{
 	 * text.fillColor = 'black';
 	 * text.content = 'The contents of the point text';
 	 */
-	initialize: function(point, cache) {
+	initialize: function(point) {
 		this.base();
 		this._point = Point.read(arguments).clone();
 		this._matrix = new Matrix().translate(this._point);
-		this.cache = (cache === true);
-	},
-	
-	_changed: function(flags) {
-		// Don't use base() for reasons of performance.
-		Item.prototype._changed.call(this, flags);
-		if (flags & (Change.CONTENT | Change.ATTRIBUTE)) {
-			delete this._cache;
-		}
 	},
 
 	clone: function() {
@@ -75,49 +65,6 @@ var PointText = this.PointText = TextItem.extend(/** @lends PointText# */{
 		this.translate(Point.read(arguments).subtract(this._point));
 	},
 
-	// TODO: Position should be the center point of the bounds but we currently
-	// don't support bounds for PointText, so let's return the same as #point
-	// for the time being.
-	getPosition: function() {
-		return this.getPoint();
-	},
-
-	setPosition: function(point) {
-		this.setPoint.apply(this, arguments);
-	},
-	
-	_getBounds: function(getter, cacheName, args){
-		// Return from the cache if we can
-		if (this[cacheName])
-			return this[cacheName];
-		// If there is no text, there are no bounds
-		if (!this._content){
-			return this[cacheName] = new Rectangle();
-		}
-		// Create an in-memory canvas on which to do the measuring
-		var x = this._point.x,
-		    y = this._point.y,
-		    canvas = this.project._scope.view.canvas,
-		    ctx = canvas.getContext('2d'),
-		    justification = this.getJustification();
-		// Measure the real width of the text, but the height still must be undefined
-		// (since there is no sane way to measure text height with canvas)
-		ctx.save();
-		ctx.font = this._getFontString();
-		this._matrix.applyToContext(ctx);
-		var width = ctx.measureText(this._content).width;
-		// Adjust for different justifications
-		if (justification === 'right') {
-			x = Math.round(x - width);
-		} else if (justification === 'center') {
-			x = Math.round(x - (width / 2));
-		}
-		var bounds = Rectangle.create(x, y, width, this.getCharacterStyle()._lineHeight);
-		this[cacheName] = bounds;
-		ctx.restore();
-		return getter == 'getBounds' ? this._createBounds(bounds) : bounds;
-	},
-
 	_transform: function(matrix, flags) {
 		this._matrix.preConcatenate(matrix);
 		// Also transform _point:
@@ -127,60 +74,65 @@ var PointText = this.PointText = TextItem.extend(/** @lends PointText# */{
 	draw: function(ctx) {
 		if (!this._content)
 			return;
-		
-		// Draw unless we already have a cache to use
-		if (this._cache === undefined) {
-			if (this.cache === true) {
-				this._cachedDrawBounds = this.getBounds();
-				var cacheCanvas = document.createElement('canvas');
-				cacheCanvas.width = this._cachedDrawBounds.width;
-				cacheCanvas.height = this._cachedDrawBounds.height;
-				var originalCtx = ctx,
-				    ctx = cacheCanvas.getContext('2d');
-			}
-			
-			ctx.save();
-			ctx.font = this._getFontString();
-			
-			// textAlign and the matrix transformation don't apply if we're caching, and textBaseline should be top
-			// so that rendering always happens at (0, 0) -- the positioning is handled in drawImage instead
-			// (this is so that we can have a "snug" off-screen canvas -- see http://jsperf.com/render-vs-prerender/3)
-			if (this.cache === true) {
-				ctx.textBaseline = 'top';
-			} else {
-				ctx.textBaseline = 'middle';
-				ctx.textAlign = this.getJustification();
-				this._matrix.applyToContext(ctx);
-			}
-
-			var fillColor = this.getFillColor();
-			var strokeColor = this.getStrokeColor();
-			if (!fillColor || !strokeColor)
-				ctx.globalAlpha = this._opacity;
-			if (fillColor) {
-				ctx.fillStyle = fillColor.getCanvasStyle(ctx);
-				ctx.fillText(this._content, 0, 0);
-			}
-			if (strokeColor) {
-				ctx.strokeStyle = strokeColor.getCanvasStyle(ctx);
-				ctx.strokeText(this._content, 0, 0);
-			}
-			ctx.restore();
-			
-			if (this.cache === true) {
-				this._cache = cacheCanvas;
-				ctx = originalCtx;
-			}
+		ctx.save();
+		ctx.font = this.getFontSize() + 'px ' + this.getFont();
+		ctx.textAlign = this.getJustification();
+		this._matrix.applyToContext(ctx);
+		var fillColor = this.getFillColor(),
+			strokeColor = this.getStrokeColor(),
+			leading = this.getLeading();
+		if (!fillColor || !strokeColor)
+			ctx.globalAlpha = this._opacity;
+		if (fillColor)
+			ctx.fillStyle = fillColor.getCanvasStyle(ctx);
+		if (strokeColor)
+			ctx.strokeStyle = strokeColor.getCanvasStyle(ctx);
+		for (var i = 0, l = this._lines.length; i < l; i++) {
+			var line = this._lines[i];
+			if (fillColor)
+				ctx.fillText(line, 0, 0);
+			if (strokeColor)
+				ctx.strokeText(line, 0, 0);
+			ctx.translate(0, leading);
 		}
-	
-		// If the cache was used (either generated here, or already prepared previously), we need to
-		// draw it to the actual canvas
-		if (this._cache !== undefined) {
-			ctx.drawImage(
-				this._cache,
-				this._cachedDrawBounds.x,
-				(this._cachedDrawBounds.y - (this._cachedDrawBounds.height / 2))
-			);
-		}
+		ctx.restore();
 	}
+}, new function() {
+	var context = null;
+
+	return {
+		_getBounds: function(getter, cacheName, matrix) {
+			// TODO: What if first argument is a Matrix? See PlacedItem...
+			// Return from the cache if we can
+			if (this[cacheName])
+				return this[cacheName];
+			// If there is no text, there are no bounds
+			if (!this._content)
+				return this[cacheName] = new Rectangle();
+			// Create an in-memory canvas on which to do the measuring
+			if (!context)
+				context = CanvasProvider.getCanvas(Size.create(1, 1)).getContext('2d');
+			var justification = this.getJustification(),
+				x = 0;
+			// Measure the real width of the text. Unfortunately, there is no
+			// sane way to measure text height with canvas
+			context.font = this.getFontSize() + 'px ' + this.getFont();
+			var width = 0;
+			for (var i = 0, l = this._lines.length; i < l; i++)
+				width = Math.max(width, context.measureText(this._lines[i]).width);
+			// Adjust for different justifications
+			if (justification != 'left')
+				x -= width / (justification === 'center' ? 2: 1);
+			var leading = this.getLeading();
+			var count = this._lines.length;
+			// Until we don't have baseline measuring, assume leading / 4 as a
+			// rough guess
+			var bounds = Rectangle.create(x, leading / 4 + (count - 1) * leading,
+					width, -count * leading);
+			this._matrix._transformBounds(bounds, bounds);
+			// TODO: Only cache if no matrix is provided
+			this[cacheName] = bounds;
+			return getter == 'getBounds' ? this._createBounds(bounds) : bounds;
+		}
+	};
 });

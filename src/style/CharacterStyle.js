@@ -35,9 +35,8 @@ var CharacterStyle = this.CharacterStyle = PathStyle.extend(/** @lends Character
 		// Override default fillColor of CharacterStyle
 		fillColor: 'black',
 		fontSize: 10,
-		font: 'sans-serif',
-		fontString: undefined,
-		_lineHeight: 100
+		leading: null,
+		font: 'sans-serif'
 	}),
 	_owner: TextItem,
 	_style: '_characterStyle'
@@ -66,4 +65,10 @@ var CharacterStyle = this.CharacterStyle = PathStyle.extend(/** @lends Character
 	 * @default 10
 	 * @type Number
 	 */
+}, {
+	getLeading: function() {
+		// Override leading to return fontSize * 1.2 by default, when undefined
+		var leading = this.base();
+		return leading != null ? leading : this.getFontSize() * 1.2;
+	}
 });

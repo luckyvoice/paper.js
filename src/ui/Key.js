@@ -24,7 +24,7 @@ var Key = this.Key = new function() {
 	// slash, etc etc etc.
 
 	var keys = {
-		 8: 'backspace',
+		8: 'backspace',
 		13: 'enter',
 		16: 'shift',
 		17: 'control',
@@ -67,19 +67,14 @@ var Key = this.Key = new function() {
 	function handleKey(down, keyCode, charCode, event) {
 		var character = String.fromCharCode(charCode),
 			key = keys[keyCode] || character.toLowerCase(),
-			handler = down ? 'onKeyDown' : 'onKeyUp',
+			type = down ? 'keydown' : 'keyup',
 			view = View._focused,
 			scope = view && view.isVisible() && view._scope,
 			tool = scope && scope.tool;
 		keyMap[key] = down;
-		if (tool && tool[handler]) {
+		if (tool && tool.responds(type)) {
 			// Call the onKeyDown or onKeyUp handler if present
-			// When the handler function returns false, prevent the
-			// default behaviour of the key event:
-			// PORT: Add to Sg
-			var keyEvent = new KeyEvent(down, key, character, event);
-			if (tool[handler](keyEvent) === false)
-				keyEvent.preventDefault();
+			tool.fire(type, new KeyEvent(down, key, character, event));
 			if (view)
 				view.draw(true);
 		}
@@ -146,7 +141,7 @@ var Key = this.Key = new function() {
 		 * // 'a' key is pressed, fill it with red, otherwise fill it with blue:
 		 * function onMouseDown(event) {
 		 * 	var path = new Path.Circle(event.point, 10);
-		 * 	if(Key.isDown('a')) {
+		 * 	if (Key.isDown('a')) {
 		 * 		path.fillColor = 'red';
 		 * 	} else {
 		 * 		path.fillColor = 'blue';
