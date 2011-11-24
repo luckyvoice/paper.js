@@ -1246,23 +1246,28 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 		return false;
 	}
 }, Base.each(['bounds', 'strokeBounds', 'handleBounds', 'roughBounds'], function(name) {
+	// Produce getters for bounds properties. These handle caching, matrices and
+	// redirect the call to the private _getBounds, which can be overridden by 
+	// subclasses, see below.
 	this['get' + Base.capitalize(name)] = function(/* matrix */) {
 		var matrix = arguments[0];
 		// If the matrix is an identity transformation, set it to null for
 		// faster processing
 		if (matrix && matrix.isIdentity())
 			matrix = null;
+		// Allow subclasses to override _boundsType if they use the same
+		// calculations for multiple types. The default is name:
+		var type = this._boundsType;
+		if (typeof type != 'string')
+			type = type && type[name] || name;
 		// See if we can cache these bounds. We only cache non-transformed
 		// bounds on items without children, as we do not receive hierarchy
 		// change notifiers from children, and walking up the parents and
 		// merging cache bounds is not expensive.
-		// Allow subclasses to define _simpleBounds if they want to share the
-		// cache across all different bound types.
-		var cache = !this._children && !matrix
-				&& (this._simpleBounds && 'bounds' || name);
+		var cache = !this._children && !matrix && type;
 		if (cache && this._bounds && this._bounds[cache])
 			return this._bounds[cache];
-		var bounds = this._getBounds(name, matrix);
+		var bounds = this._getBounds(type, matrix);
 		// If we're returning 'bounds', create a LinkedRectangle that uses
 		// the setBounds() setter to update the Item whenever the bounds are
 		// changed:
@@ -1336,30 +1341,40 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 	 * {@grouptitle Bounding Rectangles}
 	 *
 	 * The bounding rectangle of the item excluding stroke width.
+	 *
+	 * @name Item#getBounds
 	 * @type Rectangle
 	 * @bean
 	 */
+
 	/**
 	 * The bounding rectangle of the item including stroke width.
 	 *
+	 * @name Item#getStrokeBounds
 	 * @type Rectangle
 	 * @bean
 	 */
+
 	/**
 	 * The bounding rectangle of the item including handles.
 	 *
+	 * @name Item#getHandleBounds
 	 * @type Rectangle
 	 * @bean
 	 */
+
 	/**
 	 * The rough bounding rectangle of the item that is shure to include all of
 	 * the drawing, including stroke width.
 	 *
+	 * @name Item#getRoughBounds
 	 * @type Rectangle
 	 * @bean
 	 * @ignore
 	 */
-}), /** @lends Item# */{
+
+	// Document all style properties which get injected into Item by Style:
+
 	/**
 	 * {@grouptitle Stroke Style}
 	 *
@@ -1523,7 +1538,7 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 	 * // Set the fill color of the circle to RGB red:
 	 * circle.fillColor = new RgbColor(1, 0, 0);
 	 */
-
+}), /** @lends Item# */{
 	// DOCS: document the different arguments that this function can receive.
 	/**
 	 * {@grouptitle Transform Functions}
