@@ -64,14 +64,13 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 		// Don't use base() for reasons of performance.
 		Item.prototype._changed.call(this, flags);
 		if (flags & ChangeFlag.GEOMETRY) {
-			delete this._strokeBounds;
-			delete this._handleBounds;
-			delete this._roughBounds;
 			delete this._length;
 			// Clockwise state becomes undefined as soon as geometry changes.
 			delete this._clockwise;
 		} else if (flags & ChangeFlag.STROKE) {
-			delete this._strokeBounds;
+			// TODO: We could preserve the purely geometric bounds that are not
+			// affected by stroke: _bounds.bounds and _bounds.handleBounds
+			delete this._bounds;
 		}
 	},
 
@@ -208,11 +207,12 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 	// taken into account.
 
 	_transform: function(matrix, flags) {
-		if (!matrix.isIdentity()) {
+		if (matrix && !matrix.isIdentity()) {
 			var coords = new Array(6);
 			for (var i = 0, l = this._segments.length; i < l; i++) {
 				this._segments[i]._transformCoordinates(matrix, coords, true);
 			}
+			// TODO: Can't we access _style._fillColor, as we do in strokeBounds?
 			var fillColor = this.getFillColor(),
 				strokeColor = this.getStrokeColor();
 			// Try calling transform on colors in case they are GradientColors.
@@ -1232,6 +1232,7 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 	},
 
 	_hitTest: function(point, options, matrix) {
+		// TODO: Can't we access _style._strokeColor, as we do in strokeBounds?
 		var tolerance = options.tolerance || 0,
 			radius = (options.stroke && this.getStrokeColor()
 					? this.getStrokeWidth() / 2 : 0) + tolerance,
@@ -1389,6 +1390,7 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 			if (!param.compound)
 				ctx.beginPath();
 
+			// TODO: Can't we access _style._strokeColor, as we do in strokeBounds?
 			var fillColor = this.getFillColor(),
 				strokeColor = this.getStrokeColor(),
 				dashArray = this.getDashArray() || [], // TODO: Always defined?
@@ -1756,7 +1758,9 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 		}
 	};
 }, new function() { // A dedicated scope for the tricky bounds calculations
-
+	/**
+	 * Returns the bounding rectangle of the item excluding stroke width.
+	 */
 	function getBounds(that, matrix, strokePadding) {
 		// Code ported and further optimised from:
 		// http://blog.hackers-cafe.net/2009/06/how-to-calculate-bezier-curves-bounding.html
@@ -1766,10 +1770,6 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 			return null;
 		var coords = new Array(6),
 			prevCoords = new Array(6);
-		// If the matrix is an identity transformation, set it to null for
-		// faster processing
-		if (matrix && matrix.isIdentity())
-			matrix = null;
 		// Make coordinates for first segment available in prevCoords.
 		first._transformCoordinates(matrix, prevCoords, false);
 		var min = prevCoords.slice(0, 2),
@@ -1901,199 +1901,165 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 		return [Math.abs(x), Math.abs(y)];
 	}
 
-	return {
-		/**
-		 * The bounding rectangle of the item excluding stroke width.
-		 *
-		 * @param matrix optional
-		 *
-		 * @ignore
-		 */
-		getBounds: function(/* matrix */) {
-			var useCache = arguments[0] === undefined;
-			// Pass the matrix hidden from Bootstrap, so it still inject
-			// getBounds as bean too.
-			if (useCache && this._bounds)
-				return this._bounds;
-			var bounds = this._createBounds(getBounds(this, arguments[0]));
-			if (useCache)
-				this._bounds = bounds;
-			return bounds;
-		},
+	/**
+	 * Returns the bounding rectangle of the item including stroke width.
+	 */
+	function getStrokeBounds(that, matrix) {
+		// TODO: Should we access this.getStrokeColor, as we do in _transform?
+		// TODO: Find a way to reuse 'bounds' cache instead?
+		if (!that._style._strokeColor || !that._style._strokeWidth)
+			return getBounds(that, matrix);
+		var width = that.getStrokeWidth(),
+			radius = width / 2,
+			padding = getPenPadding(radius, matrix),
+			join = that.getStrokeJoin(),
+			cap = that.getStrokeCap(),
+			// miter is relative to width. Divide it by 2 since we're
+			// measuring half the distance below
+			miter = that.getMiterLimit() * width / 2,
+			segments = that._segments,
+			length = segments.length,
+			// It seems to be compatible with Ai we need to pass pen padding
+			// untransformed to getBounds
+			bounds = getBounds(that, matrix, getPenPadding(radius));
+		// Create a rectangle of padding size, used for union with bounds
+		// further down
+		var joinBounds = new Rectangle(new Size(padding).multiply(2));
 
-		/**
-		 * The bounding rectangle of the item including stroke width.
-		 *
-		 * @ignore
-		 */
-		getStrokeBounds: function(/* matrix */) {
-			if (!this._style._strokeColor || !this._style._strokeWidth)
-				return this.getBounds.apply(this, arguments);
-			var useCache = arguments[0] === undefined;
-			if (useCache && this._strokeBounds)
-				return this._strokeBounds;
-			var matrix = arguments[0], // set #getBounds()
-				width = this.getStrokeWidth(),
-				radius = width / 2,
-				padding = getPenPadding(radius, matrix),
-				join = this.getStrokeJoin(),
-				cap = this.getStrokeCap(),
-				// miter is relative to width. Divide it by 2 since we're
-				// measuring half the distance below
-				miter = this.getMiterLimit() * width / 2,
-				segments = this._segments,
-				length = segments.length,
-				// It seems to be compatible with Ai we need to pass pen padding
-				// untransformed to getBounds()
-				bounds = getBounds(this, matrix, getPenPadding(radius));
-			// Create a rectangle of padding size, used for union with bounds
-			// further down
-			var joinBounds = new Rectangle(new Size(padding).multiply(2));
+		function add(point) {
+			bounds = bounds.include(matrix
+				? matrix.transform(point) : point);
+		}
 
-			function add(point) {
-				bounds = bounds.include(matrix
-					? matrix.transform(point) : point);
+		function addBevelJoin(curve, t) {
+			var point = curve.getPoint(t),
+				normal = curve.getNormal(t).normalize(radius);
+			add(point.add(normal));
+			add(point.subtract(normal));
+		}
+
+		function addJoin(segment, join) {
+			// When both handles are set in a segment, the join setting is
+			// ignored and round is always used.
+			if (join === 'round' || !segment._handleIn.isZero()
+					&& !segment._handleOut.isZero()) {
+				bounds = bounds.unite(joinBounds.setCenter(matrix
+					? matrix.transform(segment._point) : segment._point));
+			} else if (join == 'bevel') {
+				var curve = segment.getCurve();
+				addBevelJoin(curve, 0);
+				addBevelJoin(curve.getPrevious(), 1);
+			} else if (join == 'miter') {
+				var curve2 = segment.getCurve(),
+					curve1 = curve2.getPrevious(),
+					point = curve2.getPoint(0),
+					normal1 = curve1.getNormal(1).normalize(radius),
+					normal2 = curve2.getNormal(0).normalize(radius),
+					// Intersect the two lines
+					line1 = new Line(point.subtract(normal1),
+							new Point(-normal1.y, normal1.x)),
+					line2 = new Line(point.subtract(normal2),
+							new Point(-normal2.y, normal2.x)),
+					corner = line1.intersect(line2);
+				// Now measure the distance from the segment to the
+				// intersection, which his half of the miter distance
+				if (!corner || point.getDistance(corner) > miter) {
+					addJoin(segment, 'bevel');
+				} else {
+					add(corner);
+				}
 			}
+		}
 
-			function addBevelJoin(curve, t) {
-				var point = curve.getPoint(t),
+		function addCap(segment, cap, t) {
+			switch (cap) {
+			case 'round':
+				return addJoin(segment, cap);
+			case 'butt':
+			case 'square':
+				// Calculate the corner points of butt and square caps
+				var curve = segment.getCurve(),
+					point = curve.getPoint(t),
 					normal = curve.getNormal(t).normalize(radius);
+				// For square caps, we need to step away from point in the
+				// direction of the tangent, which is the rotated normal
+				if (cap === 'square')
+					point = point.add(normal.y, -normal.x);
 				add(point.add(normal));
 				add(point.subtract(normal));
+				break;
 			}
+		}
 
-			function addJoin(segment, join) {
-				// When both handles are set in a segment, the join setting is
-				// ignored and round is always used.
-				if (join === 'round' || !segment._handleIn.isZero()
-						&& !segment._handleOut.isZero()) {
-					bounds = bounds.unite(joinBounds.setCenter(matrix
-						? matrix.transform(segment._point) : segment._point));
-				} else if (join == 'bevel') {
-					var curve = segment.getCurve();
-					addBevelJoin(curve, 0);
-					addBevelJoin(curve.getPrevious(), 1);
-				} else if (join == 'miter') {
-					var curve2 = segment.getCurve(),
-						curve1 = curve2.getPrevious(),
-						point = curve2.getPoint(0),
-						normal1 = curve1.getNormal(1).normalize(radius),
-						normal2 = curve2.getNormal(0).normalize(radius),
-						// Intersect the two lines
-						line1 = new Line(point.subtract(normal1),
-								new Point(-normal1.y, normal1.x)),
-						line2 = new Line(point.subtract(normal2),
-								new Point(-normal2.y, normal2.x)),
-						corner = line1.intersect(line2);
-					// Now measure the distance from the segment to the
-					// intersection, which his half of the miter distance
-					if (!corner || point.getDistance(corner) > miter) {
-						addJoin(segment, 'bevel');
-					} else {
-						add(corner);
-					}
-				}
-			}
+		for (var i = 1, l = length - (that._closed ? 0 : 1); i < l; i++) {
+			addJoin(segments[i], join);
+		}
+		if (that._closed) {
+			addJoin(segments[0], join);
+		} else {
+			addCap(segments[0], cap, 0);
+			addCap(segments[length - 1], cap, 1);
+		}
+		return bounds;
+	}
 
-			function addCap(segment, cap, t) {
-				switch (cap) {
-				case 'round':
-					return addJoin(segment, cap);
-				case 'butt':
-				case 'square':
-					// Calculate the corner points of butt and square caps
-					var curve = segment.getCurve(),
-						point = curve.getPoint(t),
-						normal = curve.getNormal(t).normalize(radius);
-					// For square caps, we need to step away from point in the
-					// direction of the tangent, which is the rotated normal
-					if (cap === 'square')
-						point = point.add(normal.y, -normal.x);
-					add(point.add(normal));
-					add(point.subtract(normal));
-					break;
-				}
+	/**
+	 * Returns the bounding rectangle of the item including handles.
+	 */
+	function getHandleBounds(that, matrix, stroke, join) {
+		var coords = new Array(6),
+			x1 = Infinity,
+			x2 = -x1,
+			y1 = x1,
+			y2 = x2;
+		stroke = stroke / 2 || 0; // Stroke padding
+		join = join / 2 || 0; // Join padding, for miterLimit
+		for (var i = 0, l = that._segments.length; i < l; i++) {
+			var segment = that._segments[i];
+			segment._transformCoordinates(matrix, coords, false);
+			for (var j = 0; j < 6; j += 2) {
+				// Use different padding for points or handles
+				var padding = j == 0 ? join : stroke,
+					x = coords[j],
+					y = coords[j + 1],
+					xn = x - padding,
+					xx = x + padding,
+					yn = y - padding,
+					yx = y + padding;
+				if (xn < x1) x1 = xn;
+				if (xx > x2) x2 = xx;
+				if (yn < y1) y1 = yn;
+				if (yx > y2) y2 = yx;
 			}
+		}
+		return Rectangle.create(x1, y1, x2 - x1, y2 - y1);
+	}
 
-			for (var i = 1, l = length - (this._closed ? 0 : 1); i < l; i++) {
-				addJoin(segments[i], join);
-			}
-			if (this._closed) {
-				addJoin(segments[0], join);
-			} else {
-				addCap(segments[0], cap, 0);
-				addCap(segments[length - 1], cap, 1);
-			}
-			if (useCache)
-				this._strokeBounds = bounds;
-			return bounds;
-		},
+	/**
+	 * Returns the rough bounding rectangle of the item that is shure to include
+	 * all of the drawing, including stroke width.
+	 */
+	function getRoughBounds(that, matrix) {
+		// Delegate to handleBounds, but pass on radius values for stroke and
+		// joins. Hanlde miter joins specially, by passing the largets radius
+		// possible.
+		var width = that.getStrokeWidth();
+		return getHandleBounds(that, matrix, width,
+				that.getStrokeJoin() == 'miter'
+					? width * that.getMiterLimit()
+					: width);
+	}
 
-		/**
-		 * The bounding rectangle of the item including handles.
-		 *
-		 * @ignore
-		 */
-		getHandleBounds: function(/* matrix, stroke, join */) {
-			// Do not check for matrix but count parameters to determine if we
-			// can cache or not, as the other parameters have an influence on
-			// that too:
-			var useCache = arguments.length == 0;
-			if (useCache && this._handleBounds)
-				return this._handleBounds;
-			var coords = new Array(6),
-				matrix = arguments[0],
-				stroke = arguments[1] / 2 || 0, // Stroke padding
-				join = arguments[2] / 2 || 0, // Join padding, for miterLimit
-				open = !this._closed,
-				x1 = Infinity,
-				x2 = -x1,
-				y1 = x1,
-				y2 = x2;
-			for (var i = 0, l = this._segments.length; i < l; i++) {
-				var segment = this._segments[i];
-				segment._transformCoordinates(matrix, coords, false);
-				for (var j = 0; j < 6; j += 2) {
-					// Use different padding for points or handles
-					var padding = j == 0 ? join : stroke,
-						x = coords[j],
-						y = coords[j + 1],
-						xn = x - padding,
-						xx = x + padding,
-						yn = y - padding,
-						yx = y + padding;
-					if (xn < x1) x1 = xn;
-					if (xx > x2) x2 = xx;
-					if (yn < y1) y1 = yn;
-					if (yx > y2) y2 = yx;
-				}
-			}
-			var bounds = Rectangle.create(x1, y1, x2 - x1, y2 - y1);
-			if (useCache)
-				this._handleBounds = bounds;
-			return bounds;
-		},
+	var get = {
+		bounds: getBounds,
+		strokeBounds: getStrokeBounds,
+		handleBounds: getHandleBounds,
+		roughBounds: getRoughBounds
+	};
 
-		/**
-		 * The rough bounding rectangle of the item that is shure to include all
-		 * of the drawing, including stroke width.
-		 *
-		 * @ignore
-		 */
-		getRoughBounds: function(/* matrix */) {
-			var useCache = arguments[0] === undefined;
-			if (useCache && this._roughBounds)
-				return this._roughBounds;
-			// Delegate to #getHandleBounds(), but pass on radius values for
-			// stroke and joins. Hanlde miter joins specially, by passing the
-			// largets radius possible.
-			var bounds = this.getHandleBounds(arguments[0], this.strokeWidth,
-					this.getStrokeJoin() == 'miter'
-						? this.strokeWidth * this.getMiterLimit()
-						: this.strokeWidth);
-			if (useCache)
-				this._roughBounds = bounds;
-			return bounds;
+	return {
+		_getBounds: function(type, matrix) {
+			return get[type](this, matrix);
 		}
 	};
 });

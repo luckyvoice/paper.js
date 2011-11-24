@@ -293,26 +293,24 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 	statics: {
 		_id: 0
 	}
-}, new function() { // Injection scope to produce getter setters for properties
-	// We need setters because we want to call _changed() if a property was
-	// modified.
-	return Base.each(['locked', 'visible', 'blendMode', 'opacity', 'guide'],
-		function(name) {
-			var part = Base.capitalize(name),
-				name = '_' + name;
-			this['get' + part] = function() {
-				return this[name];
-			};
-			this['set' + part] = function(value) {
-				if (value != this[name]) {
-					this[name] = value;
-					// #locked does not change appearance, all others do:
-					this._changed(name === '_locked'
-							? ChangeFlag.ATTRIBUTE : Change.ATTRIBUTE);
-				}
-			};
-		}, {});
-}, /** @lends Item# */{
+}, Base.each(['locked', 'visible', 'blendMode', 'opacity', 'guide'],
+	// Produce getter/setters for properties. We need setters because we want to
+	// call _changed() if a property was modified.
+	function(name) {
+		var part = Base.capitalize(name),
+			name = '_' + name;
+		this['get' + part] = function() {
+			return this[name];
+		};
+		this['set' + part] = function(value) {
+			if (value != this[name]) {
+				this[name] = value;
+				// #locked does not change appearance, all others do:
+				this._changed(name === '_locked'
+						? ChangeFlag.ATTRIBUTE : Change.ATTRIBUTE);
+			}
+		};
+}, {}), /** @lends Item# */{
 	// Note: These properties have their getter / setters produced in the
 	// injection scope above.
 
@@ -1246,13 +1244,48 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 			parent = parent._parent;
 		}
 		return false;
-	},
-
+	}
+}, Base.each(['bounds', 'strokeBounds', 'handleBounds', 'roughBounds'], function(name) {
+	this['get' + Base.capitalize(name)] = function(/* matrix */) {
+		var matrix = arguments[0];
+		// If the matrix is an identity transformation, set it to null for
+		// faster processing
+		if (matrix && matrix.isIdentity())
+			matrix = null;
+		// See if we can cache these bounds. We only cache non-transformed
+		// bounds on items without children, as we do not receive hierarchy
+		// change notifiers from children, and walking up the parents and
+		// merging cache bounds is not expensive.
+		// Allow subclasses to define _simpleBounds if they want to share the
+		// cache across all different bound types.
+		var cache = !this._children && !matrix
+				&& (this._simpleBounds && 'bounds' || name);
+		if (cache && this._bounds && this._bounds[cache])
+			return this._bounds[cache];
+		var bounds = this._getBounds(name, matrix);
+		// If we're returning 'bounds', create a LinkedRectangle that uses
+		// the setBounds() setter to update the Item whenever the bounds are
+		// changed:
+		if (name == 'bounds')
+			bounds = LinkedRectangle.create(this, 'setBounds',
+					bounds.x, bounds.y, bounds.width, bounds.height);
+		// If we can cache the result, update the _bounds cache structure
+		// before returning
+		if (cache) {
+			if (!this._bounds)
+				this._bounds = {};
+			this._bounds[cache] = bounds;
+		}
+		return bounds;
+	};
+}, /** @lends Item# */{
 	/**
-	 * Loops through all children, gets their bounds and finds the bounds around
-	 * all of them.
+	 * Internal method used in all the bounds getters. It loops through all the
+	 * children, gets their bounds and finds the bounds around all of them.
+	 * Subclasses override it to define calculations for the various required
+	 * bounding types.
 	 */
-	_getBounds: function(getter, cacheName, matrix) {
+	_getBounds: function(type, matrix) {
 		// Note: We cannot cache these results here, since we do not get
 		// _changed() notifications here for changing geometry in children.
 		// But cacheName is used in sub-classes such as PlacedItem.
@@ -1268,34 +1301,14 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 		for (var i = 0, l = children.length; i < l; i++) {
 			var child = children[i];
 			if (child._visible) {
-				var rect = child[getter](matrix);
+				var rect = child._getBounds(type, matrix);
 				x1 = Math.min(rect.x, x1);
 				y1 = Math.min(rect.y, y1);
 				x2 = Math.max(rect.x + rect.width, x2);
 				y2 = Math.max(rect.y + rect.height, y2);
 			}
 		}
-		var bounds = Rectangle.create(x1, y1, x2 - x1, y2 - y1);
-		return getter == 'getBounds' ? this._createBounds(bounds) : bounds;
-	},
-
-	/**
-	 * Creates a LinkedRectangle that when modified calls #setBounds().
-	 */
-	_createBounds: function(rect) {
-		return LinkedRectangle.create(this, 'setBounds',
-				rect.x, rect.y, rect.width, rect.height);
-	},
-
-	/**
-	 * {@grouptitle Bounding Rectangles}
-	 *
-	 * The bounding rectangle of the item excluding stroke width.
-	 * @type Rectangle
-	 * @bean
-	 */
-	getBounds: function(/* matrix */) {
-		return this._getBounds('getBounds', '_bounds', arguments[0]);
+		return Rectangle.create(x1, y1, x2 - x1, y2 - y1);
 	},
 
 	setBounds: function(rect) {
@@ -1317,28 +1330,27 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 		matrix.translate(-center.x, -center.y);
 		// Now execute the transformation:
 		this.transform(matrix);
-	},
+	}
 
+	/**
+	 * {@grouptitle Bounding Rectangles}
+	 *
+	 * The bounding rectangle of the item excluding stroke width.
+	 * @type Rectangle
+	 * @bean
+	 */
 	/**
 	 * The bounding rectangle of the item including stroke width.
 	 *
 	 * @type Rectangle
 	 * @bean
 	 */
-	getStrokeBounds: function(/* matrix */) {
-		return this._getBounds('getStrokeBounds', '_strokeBounds', arguments[0]);
-	},
-
 	/**
 	 * The bounding rectangle of the item including handles.
 	 *
 	 * @type Rectangle
 	 * @bean
 	 */
-	getHandleBounds: function(/* matrix */) {
-		return this._getBounds('getHandleBounds', '_handleBounds', arguments[0]);
-	},
-
 	/**
 	 * The rough bounding rectangle of the item that is shure to include all of
 	 * the drawing, including stroke width.
@@ -1347,10 +1359,7 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 	 * @bean
 	 * @ignore
 	 */
-	getRoughBounds: function(/* matrix */) {
-		return this._getBounds('getRoughBounds', '_roughBounds', arguments[0]);
-	},
-
+}), /** @lends Item# */{
 	/**
 	 * {@grouptitle Stroke Style}
 	 *
@@ -1684,7 +1693,7 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 		// TODO: Call transform on chidren only if 'children' flag is provided.
 		// Calling _changed will clear _bounds and _position, but depending
 		// on matrix we can calculate and set them again.
-		var bounds = this._bounds,
+		var bounds = null,// this._bounds,
 			position = this._position,
 			children = this._children;
 		if (this._transform) {
@@ -1695,6 +1704,7 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 		// and transform the cached _bounds and _position without having to
 		// fully recalculate each time.
 		if (bounds && matrix.getRotation() % 90 === 0) {
+			// XXX: Bounds transition
 			// Transform the old _bounds without notifying it of changes
 			this._bounds = matrix._transformBounds(bounds, bounds, true);
 			// Update _position again, by linking it to _bounds
