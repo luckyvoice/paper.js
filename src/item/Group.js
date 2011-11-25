@@ -116,33 +116,45 @@ var Group = this.Group = Item.extend(/** @lends Group# */{
 		if (child)
 			child.setClipMask(clipped);
 		return this;
-	},
-
-	draw: function(ctx, param) {
-		var clipItems = this._getClipItems();
-		// If the group is clipped, draw to an in-memory canvas (otherwise the entire
-		// canvas will be clipped)
-		if (clipItems.length !== 0) {
-			var clippingCanvas = document.createElement('canvas');
-			clippingCanvas.width = ctx.canvas.width;
-			clippingCanvas.height = ctx.canvas.height;
-			var originalCtx = ctx,
-			    ctx = clippingCanvas.getContext('2d');
-			
-			for (var i = 0, l = clipItems.length; i < l; i++) {
-				Item.draw(clipItems[i], ctx, param);
-			}
-			
-			ctx.globalCompositeOperation = this._clippingCompositionOperation;
-		}
-		for (var i = 0, l = this._children.length; i < l; i++) {
-			var item = this._children[i];
-			if (!item._clipMask)
-				Item.draw(item, ctx, param);
-		}
-		// Draw the clipped items back to the original canvas
-		if (clipItems.length !== 0) {
-			originalCtx.drawImage(clippingCanvas, 0, 0);
+	}
+}, new function(){
+	var context = null;
+	
+	return {
+		draw: function(ctx, param) {
+		    var bounds, clipItems, context, item, originalCtx, _i, _j, _len, _len2, _ref;
+		    clipItems = this._getClipItems();
+		    // If the group is to be clipped, draw to an in-memory canvas
+		    if (clipItems.length !== 0) {
+		        originalCtx = ctx;
+		        bounds = this.getBounds();
+		        if (!context) {
+		            ctx = context = CanvasProvider.getCanvas(bounds.getSize()).getContext('2d');
+		        } else {
+		            ctx = context;
+		        }
+		        ctx.save();
+		        // Draw the items which form the mask
+		        ctx.translate(-bounds.x, -bounds.y);
+		        for (_i = 0, _len = clipItems.length; _i < _len; _i++) {
+		            item = clipItems[_i];
+		            Item.draw(item, ctx, param);
+		        }
+		        // Clip
+		        ctx.globalCompositeOperation = this._clippingCompositionOperation;
+		    }
+		    // Draw the regular items
+		    _ref = this._children;
+		    for (_j = 0, _len2 = _ref.length; _j < _len2; _j++) {
+		        item = _ref[_j];
+		        if (!item._clipMark) Item.draw(item, ctx, param);
+		    }
+		    // Draw the clipped items back to the original canvas
+		    if (clipItems.length !== 0) {
+		        originalCtx.drawImage(ctx.canvas, bounds.x, bounds.y);
+		        ctx.restore();
+		        return ctx.clearRect(0, 0, ctx.canvas.width + 1, ctx.canvas.height + 1);
+		    }
 		}
 	}
 });
