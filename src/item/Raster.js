@@ -55,7 +55,6 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 /*#*/ } // options.server
 			this.setImage(object);
 		}
-		this._matrix = new Matrix();
 	},
 
 	clone: function() {
@@ -67,7 +66,6 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 			image.getContext('2d').drawImage(this._canvas, 0, 0);
 		}
 		var copy = new Raster(image);
-		copy._matrix = this._matrix.clone();
 		return this._clone(copy);
 	},
 
@@ -122,7 +120,7 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 			orig = new Point(0, 0).transform(matrix),
 			u = new Point(1, 0).transform(matrix).subtract(orig),
 			v = new Point(0, 1).transform(matrix).subtract(orig);
-		return new Size(
+		return Size.create(
 			72 / u.getLength(),
 			72 / v.getLength()
 		);
@@ -162,7 +160,7 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 		if (this._canvas)
 			CanvasProvider.returnCanvas(this._canvas);
 		this._canvas = canvas;
-		this._size = new Size(canvas.width, canvas.height);
+		this._size = Size.create(canvas.width, canvas.height);
 		this._image = null;
 		this._context = null;
 		this._changed(Change.GEOMETRY);
@@ -184,9 +182,9 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 			CanvasProvider.returnCanvas(this._canvas);
 		this._image = image;
 /*#*/ if (options.browser) {
-		this._size = new Size(image.naturalWidth, image.naturalHeight);
+		this._size = Size.create(image.naturalWidth, image.naturalHeight);
 /*#*/ } else if (options.server) {
-		this._size = new Size(image.width, image.height);
+		this._size = Size.create(image.width, image.height);
 /*#*/ } // options.server
 		this._canvas = null;
 		this._context = null;
@@ -241,6 +239,7 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 		} else if (object.width) {
 			bounds = new Rectangle(object);
 		} else if (object.x) {
+			// Create a rectangle of 1px size around the specified coordinates
 			bounds = Rectangle.create(object.x - 0.5, object.y - 0.5, 1, 1);
 		}
 		// Use a sample size of max 32 x 32 pixels, into which the path is
@@ -254,7 +253,7 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 		var ctx = Raster._sampleContext;
 		if (!ctx) {
 			ctx = Raster._sampleContext = CanvasProvider.getCanvas(
-					new Size(sampleSize)).getContext('2d');
+					sampleSize.clone()).getContext('2d');
 		} else {
 			// Clear the sample canvas:
 			ctx.clearRect(0, 0, sampleSize, sampleSize);
@@ -384,9 +383,9 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 		this.getContext(true).putImageData(data, point.x, point.y);
 	},
 
-	_calculateBounds: function(type, matrix) {
-		return matrix._transformBounds(
-				new Rectangle(this._size).setCenter(0, 0));
+	_getBounds: function(type, matrix) {
+		var rect = new Rectangle(this._size).setCenter(0, 0);
+		return matrix ? matrix._transformBounds(rect) : rect;
 	},
 
 	_hitTest: function(point, options) {
