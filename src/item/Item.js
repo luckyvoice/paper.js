@@ -101,6 +101,258 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 			});
 	},
 
+	// DOCS: move event handler documentation down?
+	/**
+	 * {@grouptitle Event Handlers}
+	 * Item level handler function to be called on each frame of an animation.
+	 * The function receives an event object which contains information about
+	 * the frame event:
+	 *
+	 * <b>{@code event.count}</b>: the number of times the frame event was
+	 * fired.
+	 * <b>{@code event.time}</b>: the total amount of time passed since the
+	 * first frame event in seconds.
+	 * <b>{@code event.delta}</b>: the time passed in seconds since the last
+	 * frame event.
+	 *
+ 	 * @see View#onFrame
+	 * @example {@paperscript}
+	 * // Creating an animation:
+	 *
+	 * // Create a rectangle shaped path with its top left point at:
+	 * // {x: 50, y: 25} and a size of {width: 50, height: 50}
+	 * var path = new Path.Rectangle(new Point(50, 25), new Size(50, 50));
+	 * path.fillColor = 'black';
+	 *
+	 * path.onFrame = function(event) {
+	 * 	// Every frame, rotate the path by 3 degrees:
+	 * 	this.rotate(3);
+	 * }
+	 *
+	 * @name Item#onFrame
+	 * @property
+	 * @type Function
+	 */
+
+	/**
+	 * The function to be called when the mouse button is pushed down on the
+	 * item. The function receives a {@link MouseEvent} object which contains
+	 * information about the mouse event.
+	 *
+	 * @name Item#onMouseDown
+	 * @property
+	 * @type Function
+	 *
+	 * @example {@paperscript}
+	 * // Press the mouse button down on the circle shaped path, to make it red:
+	 * 
+	 * // Create a circle shaped path at the center of the view:
+	 * var path = new Path.Circle(view.center, 25);
+	 * path.fillColor = 'black';
+	 * 
+	 * // When the mouse is pressed on the item,
+	 * // set its fill color to red:
+	 * path.onMouseDown = function(event) {
+	 * 	this.fillColor = 'red';
+	 * }
+	 * 
+	 * @example {@paperscript}
+	 * // Press the mouse on the circle shaped paths to remove them:
+	 * 
+	 * // Loop 30 times:
+	 * for (var i = 0; i < 30; i++) {
+	 * 	// Create a circle shaped path at a random position
+	 * 	// in the view:
+	 * 	var position = Point.random() * view.size;
+	 * 	var path = new Path.Circle(position, 25);
+	 * 	path.fillColor = 'black';
+	 * 	path.strokeColor = 'white';
+	 * 	// When the mouse is pressed on the item, remove it:
+	 * 	path.onMouseDown = function(event) {
+	 * 		this.remove();
+	 * 	}
+	 * }
+	 */
+
+	/**
+	 * The function to be called when the mouse button is released over the item.
+	 * The function receives a {@link MouseEvent} object which contains
+	 * information about the mouse event.
+	 *
+	 * @name Item#onMouseUp
+	 * @property
+	 * @type Function
+	 *
+	 * @example {@paperscript}
+	 * // Release the mouse button over the circle shaped path, to make it red:
+	 * 
+	 * // Create a circle shaped path at the center of the view:
+	 * var path = new Path.Circle(view.center, 25);
+	 * path.fillColor = 'black';
+	 * 
+	 * // When the mouse is released over the item,
+	 * // set its fill color to red:
+	 * path.onMouseUp = function(event) {
+	 * 	this.fillColor = 'red';
+	 * }
+	 */
+
+	/**
+	 * The function to be called when the mouse clicks on the item. The function
+	 * receives a {@link MouseEvent} object which contains information about the
+	 * mouse event.
+	 *
+	 * @name Item#onClick
+	 * @property
+	 * @type Function
+	 *
+	 * @example {@paperscript}
+	 * // Click on the circle shaped path, to make it red:
+	 * 
+	 * // Create a circle shaped path at the center of the view:
+	 * var path = new Path.Circle(view.center, 25);
+	 * path.fillColor = 'black';
+	 * 
+	 * // When the mouse is clicked on the item,
+	 * // set its fill color to red:
+	 * path.onClick = function(event) {
+	 * 	this.fillColor = 'red';
+	 * }
+	 * 
+	 * @example {@paperscript}
+	 * // Click on the circle shaped paths to remove them:
+	 * 
+	 * // Loop 30 times:
+	 * for (var i = 0; i < 30; i++) {
+	 * 	// Create a circle shaped path at a random position
+	 * 	// in the view:
+	 * 	var position = Point.random() * view.size;
+	 * 	var path = new Path.Circle(position, 25);
+	 * 	path.fillColor = 'black';
+	 * 	path.strokeColor = 'white';
+	 * 	// When the mouse is clicked on the item, remove it:
+	 * 	path.onClick = function(event) {
+	 * 		this.remove();
+	 * 	}
+	 * }
+	 */
+
+	/**
+	 * The function to be called when the mouse double clicks on the item. The
+	 * function receives a {@link MouseEvent} object which contains information
+	 * about the mouse event.
+	 *
+	 * @name Item#onDoubleClick
+	 * @property
+	 * @type Function
+	 *
+	 * @example {@paperscript}
+	 * // Double click on the circle shaped path, to make it red:
+	 * 
+	 * // Create a circle shaped path at the center of the view:
+	 * var path = new Path.Circle(view.center, 25);
+	 * path.fillColor = 'black';
+	 * 
+	 * // When the mouse is double clicked on the item,
+	 * // set its fill color to red:
+	 * path.onDoubleClick = function(event) {
+	 * 	this.fillColor = 'red';
+	 * }
+	 * 
+	 * @example {@paperscript}
+	 * // Double click on the circle shaped paths to remove them:
+	 * 
+	 * // Loop 30 times:
+	 * for (var i = 0; i < 30; i++) {
+	 * 	// Create a circle shaped path at a random position
+	 * 	// in the view:
+	 * 	var position = Point.random() * view.size;
+	 * 	var path = new Path.Circle(position, 25);
+	 * 	path.fillColor = 'black';
+	 * 	path.strokeColor = 'white';
+	 * 	// When the mouse is clicked on the item, remove it:
+	 * 	path.onDoubleClick = function(event) {
+	 * 		this.remove();
+	 * 	}
+	 * }
+	 */
+
+	/**
+	 * The function to be called repeatedly when the mouse moves on top of the
+	 * item. The function receives a {@link MouseEvent} object which contains
+	 * information about the mouse event.
+	 *
+	 * @name Item#onMouseMove
+	 * @property
+	 * @type Function
+	 *
+	 * @example {@paperscript}
+	 * // Move over the circle shaped path, to change its opacity:
+	 * 
+	 * // Create a circle shaped path at the center of the view:
+	 * var path = new Path.Circle(view.center, 25);
+	 * path.fillColor = 'black';
+	 * 
+	 * // When the mouse moves on top of the item, set its opacity
+	 * // to a random value between 0 and 1:
+	 * path.onMouseMove = function(event) {
+	 * 	this.opacity = Math.random();
+	 * }
+	 */
+
+	/**
+	 * The function to be called when the mouse moves over the item. This
+	 * function will only be called again, once the mouse moved outside of the
+	 * item first. The function receives a {@link MouseEvent} object which
+	 * contains information about the mouse event.
+	 *
+	 * @name Item#onMouseEnter
+	 * @property
+	 * @type Function
+	 *
+	 * @example {@paperscript}
+	 * // When you move the mouse over the item, its fill color is set to red.
+	 * // When you move the mouse outside again, its fill color is set back
+	 * // to black.
+	 * 
+	 * // Create a circle shaped path at the center of the view:
+	 * var path = new Path.Circle(view.center, 25);
+	 * path.fillColor = 'black';
+	 * 
+	 * // When the mouse enters the item, set its fill color to red:
+	 * path.onMouseEnter = function(event) {
+	 * 	this.fillColor = 'red';
+	 * }
+	 
+	 * // When the mouse leaves the item, set its fill color to black:
+	 * path.onMouseLeave = function(event) {
+	 * 	this.fillColor = 'black';
+	 * }
+	 */
+
+	/**
+	 * The function to be called when the mouse moves out of the item.
+	 * The function receives a {@link MouseEvent} object which contains
+	 * information about the mouse event.
+	 *
+	 * @name Item#onMouseLeave
+	 * @property
+	 * @type Function
+	 *
+	 * @example {@paperscript}
+	 * // Move the mouse over the circle shaped path and then move it out
+	 * // of it again to set its fill color to red:
+	 * 
+	 * // Create a circle shaped path at the center of the view:
+	 * var path = new Path.Circle(view.center, 25);
+	 * path.fillColor = 'black';
+	 * 
+	 * // When the mouse leaves the item, set its fill color to red:
+	 * path.onMouseLeave = function(event) {
+	 * 	this.fillColor = 'red';
+	 * }
+	 */
+
 	initialize: function() {
 		// Define this Item's unique id.
 		this._id = ++Item._id;
@@ -210,69 +462,6 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 			children[name] = this;
 		}
 		this._changed(ChangeFlag.ATTRIBUTE);
-	},
-
-	/**
-	 * The item's transformation matrix, defining position and dimensions in the
-	 * document.
-	 *
-	 * @type Matrix
-	 * @bean
-	 */
-	getMatrix: function() {
-		return this._matrix;
-	},
-
-	setMatrix: function(matrix) {
-		// Use Matrix#initialize to easily copy over values.
-		this._matrix.initialize(matrix);
-		this._changed(Change.GEOMETRY);
-	},
-
-	/**
-	 * The item's position within the project. This is the
-	 * {@link Rectangle#center} of the item's {@link #bounds} rectangle.
-	 *
-	 * @type Point
-	 * @bean
-	 *
-	 * @example {@paperscript}
-	 * // Changing the position of a path:
-	 *
-	 * // Create a circle at position { x: 10, y: 10 }
-	 * var circle = new Path.Circle(new Point(10, 10), 10);
-	 * circle.fillColor = 'red';
-	 *
-	 * // Move the circle to { x: 20, y: 20 }
-	 * circle.position = new Point(20, 20);
-	 *
-	 * // Move the circle 100 points to the right and 50 points down
-	 * circle.position += new Point(100, 50);
-	 *
-	 * @example {@paperscript split=true height=100}
-	 * // Changing the x coordinate of an item's position:
-	 *
-	 * // Create a circle at position { x: 20, y: 20 }
-	 * var circle = new Path.Circle(new Point(20, 20), 10);
-	 * circle.fillColor = 'red';
-	 *
-	 * // Move the circle 100 points to the right
-	 * circle.position.x += 100;
-	 */
-	getPosition: function() {
-		// Cache position value
-		var pos = this._position
-				|| (this._position = this.getBounds().getCenter());
-		// this._position is a LinkedPoint as well, so we can use _x and _y.
-		// Do not cache LinkedPoints directly, since we would not be able to
-		// use them to calculate the difference in #setPosition, as when it is
-		// modified, it would hold new values already and only then cause the
-		// calling of #setPosition.
-		return LinkedPoint.create(this, 'setPosition', pos._x, pos._y);
-	},
-
-	setPosition: function(point) {
-		this.translate(Point.read(arguments).subtract(this.getPosition()));
 	},
 
 	/**
@@ -469,11 +658,12 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 		return this._selected;
 	},
 
-	setSelected: function(selected) {
-		if (this._children) {
-			for (var i = 0, l = this._children.length; i < l; i++) {
+	setSelected: function(selected /*, noChildren */) {
+		// Don't recursively call #setSelected() if it was called with
+		// noChildren set to true, see #setFullySelected().
+		if (this._children && !arguments[1]) {
+			for (var i = 0, l = this._children.length; i < l; i++)
 				this._children[i].setSelected(selected);
-			}
 		} else if ((selected = !!selected) != this._selected) {
 			this._selected = selected;
 			this._project._updateSelection(this);
@@ -496,11 +686,11 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 
 	setFullySelected: function(selected) {
 		if (this._children) {
-			for (var i = 0, l = this._children.length; i < l; i++) {
+			for (var i = 0, l = this._children.length; i < l; i++)
 				this._children[i].setFullySelected(selected);
-			}
 		}
-		this.setSelected(selected);
+		// Pass true for hidden noChildren argument
+		this.setSelected(selected, true);
 	},
 
 	/**
@@ -534,6 +724,271 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 	// TODO: get/setAlphaIsShape
 	// TODO: get/setData
 
+	/**
+	 * {@grouptitle Position and Bounding Boxes}
+	 *
+	 * The item's position within the project. This is the
+	 * {@link Rectangle#center} of the item's {@link #bounds} rectangle.
+	 *
+	 * @type Point
+	 * @bean
+	 *
+	 * @example {@paperscript}
+	 * // Changing the position of a path:
+	 *
+	 * // Create a circle at position { x: 10, y: 10 }
+	 * var circle = new Path.Circle(new Point(10, 10), 10);
+	 * circle.fillColor = 'red';
+	 *
+	 * // Move the circle to { x: 20, y: 20 }
+	 * circle.position = new Point(20, 20);
+	 *
+	 * // Move the circle 100 points to the right and 50 points down
+	 * circle.position += new Point(100, 50);
+	 *
+	 * @example {@paperscript split=true height=100}
+	 * // Changing the x coordinate of an item's position:
+	 *
+	 * // Create a circle at position { x: 20, y: 20 }
+	 * var circle = new Path.Circle(new Point(20, 20), 10);
+	 * circle.fillColor = 'red';
+	 *
+	 * // Move the circle 100 points to the right
+	 * circle.position.x += 100;
+	 */
+	getPosition: function(/* dontLink */) {
+		// Cache position value.
+		// Pass true for dontLink in getCenter(), so receive back a normal point
+		var pos = this._position
+				|| (this._position = this.getBounds().getCenter(true));
+		// Do not cache LinkedPoints directly, since we would not be able to
+		// use them to calculate the difference in #setPosition, as when it is
+		// modified, it would hold new values already and only then cause the
+		// calling of #setPosition.
+		return arguments[0] ? pos
+				: LinkedPoint.create(this, 'setPosition', pos.x, pos.y);
+	},
+
+	setPosition: function(point) {
+		// Calculate the distance to the current position, by which to
+		// translate the item. Pass true for dontLink, as we do not need a
+		// LinkedPoint to simply calculate this distance.
+		this.translate(Point.read(arguments).subtract(this.getPosition(true)));
+	},
+
+	/**
+	 * The item's transformation matrix, defining position and dimensions in the
+	 * document.
+	 *
+	 * @type Matrix
+	 * @bean
+	 */
+	getMatrix: function() {
+		return this._matrix;
+	},
+
+	setMatrix: function(matrix) {
+		// Use Matrix#initialize to easily copy over values.
+		this._matrix.initialize(matrix);
+		this._changed(Change.GEOMETRY);
+	}
+
+	// Documentation for the bounds properties that are defined in the next
+	// scope
+
+	/**
+	 * The bounding rectangle of the item excluding stroke width.
+	 *
+	 * @name Item#getBounds
+	 * @type Rectangle
+	 * @bean
+	 */
+
+	/**
+	 * The bounding rectangle of the item including stroke width.
+	 *
+	 * @name Item#getStrokeBounds
+	 * @type Rectangle
+	 * @bean
+	 */
+
+	/**
+	 * The bounding rectangle of the item including handles.
+	 *
+	 * @name Item#getHandleBounds
+	 * @type Rectangle
+	 * @bean
+	 */
+
+	/**
+	 * The rough bounding rectangle of the item that is shure to include all of
+	 * the drawing, including stroke width.
+	 *
+	 * @name Item#getRoughBounds
+	 * @type Rectangle
+	 * @bean
+	 * @ignore
+	 */
+}, new function() {
+	/**
+	 * Private method that deals with the calling of _getBounds, recursive
+	 * matrix concatenation and handles all the complicated caching mechanisms.
+	 * Note: Needs to be called on an item using getBounds.call(item, ...).
+	 */
+	function getBounds(type, matrix, cacheItem) {
+		// See if we can cache these bounds. We only cache the bounds
+		// transformed with the internally stored _matrix, (the default if no
+		// matrix is passed).
+		var cache = (!matrix || matrix.equals(this._matrix)) && type;
+		// If the result of concatinating the passed matrix with our internal
+		// one is an identity transformation, set it to null for faster
+		// processing
+		var identity = this._matrix.isIdentity();
+		matrix = !matrix || matrix.isIdentity()
+				? identity ? null : this._matrix
+				: identity ? matrix : matrix.clone().concatenate(this._matrix);
+		// Set up a boundsCache structure that keeps track of items that keep
+		// cached bounds that depend on this item. We store this in our parent,
+		// for multiple reasons:
+		// The parent receives HIERARCHY change notifications for when its
+		// children are added or removed and can thus clear the cache, and we
+		// save a lot of memory, e.g. when grouping 100 items and asking the
+		// group for its bounds. If stored on the children, we would have 100
+		// times the same structure.
+		// Note: This needs to happen before returning cached values, since even
+		// then, _boundsCache needs to be kept up-to-date.
+		if (cacheItem && this._parent) {
+			// Set-up the parent's boundsCache structure if it does not
+			// exist yet and add the cacheItem to it.
+			var id = cacheItem._id,
+				ref = this._parent._boundsCache
+					= this._parent._boundsCache || {
+				// Use both a hashtable for ids and an array for the list,
+				// so we can keep track of items that were added already
+				ids: {},
+				list: []
+			};
+			if (!ref.ids[id]) {
+				ref.list.push(cacheItem);
+				ref.ids[id] = cacheItem;
+			}
+		}
+		if (cache && this._bounds && this._bounds[cache])
+			return this._bounds[cache];
+		// If we're caching bounds on this item, pass it on as cacheItem, so the
+		// children can setup the _boundsCache structures for it.
+		var bounds = this._getBounds(type, matrix, cache ? this : cacheItem);
+		// If we can cache the result, update the _bounds cache structure
+		// before returning
+		if (cache) {
+			if (!this._bounds)
+				this._bounds = {};
+			this._bounds[cache] = bounds;
+		}
+		return bounds;
+	}
+
+	return Base.each(['bounds', 'strokeBounds', 'handleBounds', 'roughBounds'],
+	function(name) {
+		// Produce getters for bounds properties. These handle caching, matrices
+		// and redirect the call to the private _getBounds, which can be
+		// overridden by subclasses, see below.
+		this['get' + Base.capitalize(name)] = function(/* matrix */) {
+			var type = this._boundsType,
+				bounds = getBounds.call(this,
+					// Allow subclasses to override _boundsType if they use the
+					// same calculations for multiple types.
+					// The default is name:
+					typeof type == 'string' ? type : type && type[name] || name,
+					// Pass on the optional matrix
+					arguments[0]);
+			// If we're returning 'bounds', create a LinkedRectangle that uses
+			// the setBounds() setter to update the Item whenever the bounds are
+			// changed:
+			if (name == 'bounds')
+				bounds = LinkedRectangle.create(this, 'setBounds',
+						bounds.x, bounds.y, bounds.width, bounds.height);
+			return bounds;
+		};
+	}, {
+		// Note: The documentation for the bounds properties is defined in the
+		// previous injection object.
+
+		/**
+		 * Protected method used in all the bounds getters. It loops through all
+		 * the children, gets their bounds and finds the bounds around all of
+		 * them. Subclasses override it to define calculations for the various
+		 * required bounding types.
+		 */
+		_getBounds: function(type, matrix, cacheItem) {
+			// Note: We cannot cache these results here, since we do not get
+			// _changed() notifications here for changing geometry in children.
+			// But cacheName is used in sub-classes such as PlacedItem.
+			var children = this._children;
+			// TODO: What to return if nothing is defined, e.g. empty Groups?
+			// Scriptographer behaves weirdly then too.
+			if (!children || children.length == 0)
+				return new Rectangle();
+			var x1 = Infinity,
+				x2 = -x1,
+				y1 = x1,
+				y2 = x2;
+			for (var i = 0, l = children.length; i < l; i++) {
+				var child = children[i];
+				if (child._visible) {
+					var rect = getBounds.call(child, type, matrix, cacheItem);
+					x1 = Math.min(rect.x, x1);
+					y1 = Math.min(rect.y, y1);
+					x2 = Math.max(rect.x + rect.width, x2);
+					y2 = Math.max(rect.y + rect.height, y2);
+				}
+			}
+			return Rectangle.create(x1, y1, x2 - x1, y2 - y1);
+		},
+
+		/**
+		 * Clears cached bounds of all items that the children of this item are
+		 * contributing to. See getBounds() for an explanation why this
+		 * information is stored on parents, not the children themselves.
+		 */
+		_clearBoundsCache: function() {
+			if (this._boundsCache) {
+				for (var i = 0, list = this._boundsCache.list, l = list.length;
+						i < l; i++) {
+					var item = list[i];
+					delete item._bounds;
+					// We need to recursively call _clearBoundsCache, because if
+					// the cache for this item's children is not valid anymore,
+					// that propagates up the DOM tree.
+					if (item != this && item._boundsCache)
+						item._clearBoundsCache();
+				}
+				delete this._boundsCache;
+			}
+		},
+
+		setBounds: function(rect) {
+			rect = Rectangle.read(arguments);
+			var bounds = this.getBounds(),
+				matrix = new Matrix(),
+				center = rect.getCenter();
+			// Read this from bottom to top:
+			// Translate to new center:
+			matrix.translate(center);
+			// Scale to new Size, if size changes and avoid divisions by 0:
+			if (rect.width != bounds.width || rect.height != bounds.height) {
+				matrix.scale(
+						bounds.width != 0 ? rect.width / bounds.width : 1,
+						bounds.height != 0 ? rect.height / bounds.height : 1);
+			}
+			// Translate to center:
+			center = bounds.getCenter();
+			matrix.translate(-center.x, -center.y);
+			// Now execute the transformation:
+			this.transform(matrix);
+		}
+	});
+}, /** @lends Item# */{
 	/**
 	 * {@grouptitle Project Hierarchy}
 	 * The project that this item belongs to.
@@ -1279,200 +1734,7 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 			parent = parent._parent;
 		}
 		return false;
-	}
-}, new function() {
-	/**
-	 * Private method that deals with the calling of _getBounds, recursive
-	 * matrix concatenation and handles all the complicated caching mechanisms.
-	 * Note: Needs to be called on an item using getBounds.call(item, ...).
-	 */
-	function getBounds(type, matrix, cacheItem) {
-		// See if we can cache these bounds. We only cache the bounds
-		// transformed with the internally stored _matrix, (the default if no
-		// matrix is passed).
-		var cache = (!matrix || matrix.equals(this._matrix)) && type;
-		// If the result of concatinating the passed matrix with our internal
-		// one is an identity transformation, set it to null for faster
-		// processing
-		var identity = this._matrix.isIdentity();
-		matrix = !matrix || matrix.isIdentity()
-				? identity ? null : this._matrix
-				: identity ? matrix : matrix.clone().concatenate(this._matrix);
-		// Set up a boundsCache structure that keeps track of items that keep
-		// cached bounds that depend on this item. We store this in our parent,
-		// for multiple reasons:
-		// The parent receives HIERARCHY change notifications for when its
-		// children are added or removed and can thus clear the cache, and we
-		// save a lot of memory, e.g. when grouping 100 items and asking the
-		// group for its bounds. If stored on the children, we would have 100
-		// times the same structure.
-		// Note: This needs to happen before returning cached values, since even
-		// then, _boundsCache needs to be kept up-to-date.
-		if (cacheItem && this._parent) {
-			// Set-up the parent's boundsCache structure if it does not
-			// exist yet and add the cacheItem to it.
-			var id = cacheItem._id,
-				ref = this._parent._boundsCache
-					= this._parent._boundsCache || {
-				// Use both a hashtable for ids and an array for the list,
-				// so we can keep track of items that were added already
-				ids: {},
-				list: []
-			};
-			if (!ref.ids[id]) {
-				ref.list.push(cacheItem);
-				ref.ids[id] = cacheItem;
-			}
-		}
-		if (cache && this._bounds && this._bounds[cache])
-			return this._bounds[cache];
-		// If we're caching bounds on this item, pass it on as cacheItem, so the
-		// children can setup the _boundsCache structures for it.
-		var bounds = this._getBounds(type, matrix, cache ? this : cacheItem);
-		// If we're returning 'bounds', create a LinkedRectangle that uses
-		// the setBounds() setter to update the Item whenever the bounds are
-		// changed:
-		if (name == 'bounds')
-			bounds = LinkedRectangle.create(this, 'setBounds',
-					bounds.x, bounds.y, bounds.width, bounds.height);
-		// If we can cache the result, update the _bounds cache structure
-		// before returning
-		if (cache) {
-			if (!this._bounds)
-				this._bounds = {};
-			this._bounds[cache] = bounds;
-		}
-		return bounds;
-	}
-
-	return Base.each(['bounds', 'strokeBounds', 'handleBounds', 'roughBounds'],
-	function(name) {
-		// Produce getters for bounds properties. These handle caching, matrices
-		// and redirect the call to the private _getBounds, which can be
-		// overridden by subclasses, see below.
-		this['get' + Base.capitalize(name)] = function(/* matrix */) {
-			var type = this._boundsType;
-			return getBounds.call(this,
-					// Allow subclasses to override _boundsType if they use the
-					// same calculations for multiple types.
-					// The default is name:
-					typeof type == 'string' ? type : type && type[name] || name,
-					arguments[0]);
-		};
-	}, {
-		// Note: The documentation for the bounds properties is defined in the
-		// next injection object.
-
-		/**
-		 * Protected method used in all the bounds getters. It loops through all
-		 * the children, gets their bounds and finds the bounds around all of
-		 * them. Subclasses override it to define calculations for the various
-		 * required bounding types.
-		 */
-		_getBounds: function(type, matrix, cacheItem) {
-			// Note: We cannot cache these results here, since we do not get
-			// _changed() notifications here for changing geometry in children.
-			// But cacheName is used in sub-classes such as PlacedItem.
-			var children = this._children;
-			// TODO: What to return if nothing is defined, e.g. empty Groups?
-			// Scriptographer behaves weirdly then too.
-			if (!children || children.length == 0)
-				return new Rectangle();
-			var x1 = Infinity,
-				x2 = -x1,
-				y1 = x1,
-				y2 = x2;
-			for (var i = 0, l = children.length; i < l; i++) {
-				var child = children[i];
-				if (child._visible) {
-					var rect = getBounds.call(child, type, matrix, cacheItem);
-					x1 = Math.min(rect.x, x1);
-					y1 = Math.min(rect.y, y1);
-					x2 = Math.max(rect.x + rect.width, x2);
-					y2 = Math.max(rect.y + rect.height, y2);
-				}
-			}
-			return Rectangle.create(x1, y1, x2 - x1, y2 - y1);
-		},
-
-		/**
-		 * Clears cached bounds of all items that the children of this item are
-		 * contributing to. See getBounds() for an explanation why this
-		 * information is stored on parents, not the children themselves.
-		 */
-		_clearBoundsCache: function() {
-			if (this._boundsCache) {
-				for (var i = 0, list = this._boundsCache.list, l = list.length;
-						i < l; i++) {
-					var item = list[i];
-					delete item._bounds;
-					// We need to recursively call _clearBoundsCache, because if
-					// the cache for this item's children is not valid anymore,
-					// that propagates up the DOM tree.
-					if (item != this && item._boundsCache)
-						item._clearBoundsCache();
-				}
-				delete this._boundsCache;
-			}
-		},
-
-		setBounds: function(rect) {
-			rect = Rectangle.read(arguments);
-			var bounds = this.getBounds(),
-				matrix = new Matrix(),
-				center = rect.getCenter();
-			// Read this from bottom to top:
-			// Translate to new center:
-			matrix.translate(center);
-			// Scale to new Size, if size changes and avoid divisions by 0:
-			if (rect.width != bounds.width || rect.height != bounds.height) {
-				matrix.scale(
-						bounds.width != 0 ? rect.width / bounds.width : 1,
-						bounds.height != 0 ? rect.height / bounds.height : 1);
-			}
-			// Translate to center:
-			center = bounds.getCenter();
-			matrix.translate(-center.x, -center.y);
-			// Now execute the transformation:
-			this.transform(matrix);
-		}
-	});
-}, /** @lends Item# */{
-	/**
-	 * {@grouptitle Bounding Rectangles}
-	 *
-	 * The bounding rectangle of the item excluding stroke width.
-	 *
-	 * @name Item#getBounds
-	 * @type Rectangle
-	 * @bean
-	 */
-
-	/**
-	 * The bounding rectangle of the item including stroke width.
-	 *
-	 * @name Item#getStrokeBounds
-	 * @type Rectangle
-	 * @bean
-	 */
-
-	/**
-	 * The bounding rectangle of the item including handles.
-	 *
-	 * @name Item#getHandleBounds
-	 * @type Rectangle
-	 * @bean
-	 */
-
-	/**
-	 * The rough bounding rectangle of the item that is shure to include all of
-	 * the drawing, including stroke width.
-	 *
-	 * @name Item#getRoughBounds
-	 * @type Rectangle
-	 * @bean
-	 * @ignore
-	 */
+	},
 
 	// Document all style properties which get injected into Item by Style:
 
@@ -1812,10 +2074,11 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 		var bounds = this._bounds,
 			position = this._position,
 			children = this._children;
-		if (this._transform) {
+		if (this._transform)
 			this._transform(matrix, flags);
-			this._changed(Change.GEOMETRY);
-		}
+		// We need to call _changed even if we don't have _transform, since
+		// we're caching bounds on such items too now, e.g. Group
+		this._changed(Change.GEOMETRY);
 		// Detect matrices that contain only translations and scaling
 		// and transform the cached _bounds and _position without having to
 		// fully recalculate each time.
@@ -1950,64 +2213,59 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 		draw: function(item, ctx, param) {
 			if (!item._visible || item._opacity == 0)
 				return;
-			var tempCanvas, parentCtx;
+			var tempCanvas, parentCtx,
+			 	itemOffset, prevOffset;
 			// If the item has a blendMode or is defining an opacity, draw it on
 			// a temporary canvas first and composite the canvas afterwards.
 			// Paths with an opacity < 1 that both define a fillColor
 			// and strokeColor also need to be drawn on a temporary canvas
 			// first, since otherwise their stroke is drawn half transparent
 			// over their fill.
-			if (item._blendMode !== 'normal'
-					|| item._opacity < 1
+			if (item._blendMode !== 'normal' || item._opacity < 1
 					&& !(item._segments && (!item.getFillColor()
 							|| !item.getStrokeColor()))) {
-				var bounds = item.getStrokeBounds() || item.getBounds();
+				var bounds = item.getStrokeBounds();
 				if (!bounds.width || !bounds.height)
 					return;
+				// Store previous offset and save the parent context, so we can
+				// draw onto it later
+				prevOffset = param.offset;
+				parentCtx = ctx;
 				// Floor the offset and ceil the size, so we don't cut off any
 				// antialiased pixels when drawing onto the temporary canvas.
-				var itemOffset = bounds.getTopLeft().floor(),
-					size = bounds.getSize().ceil().add(Size.create(1, 1));
-				tempCanvas = CanvasProvider.getCanvas(size);
-				// Save the parent context, so we can draw onto it later
-				parentCtx = ctx;
+				itemOffset = param.offset = bounds.getTopLeft().floor();
+				tempCanvas = CanvasProvider.getCanvas(
+						bounds.getSize().ceil().add(Size.create(1, 1)));
 				// Set ctx to the context of the temporary canvas,
 				// so we draw onto it, instead of the parentCtx
 				ctx = tempCanvas.getContext('2d');
-				ctx.save();
-				// Translate the context so the topLeft of the item is at (0, 0)
-				// on the temporary canvas.
+			}
+			ctx.save();
+			// Translate the context so the topLeft of the item is at (0, 0)
+			// on the temporary canvas.
+			if (tempCanvas)
 				ctx.translate(-itemOffset.x, -itemOffset.y);
-			}
-			var savedOffset;
-			if (itemOffset) {
-				savedOffset = param.offset;
-				param.offset = itemOffset;
-			}
+			item._matrix.applyToContext(ctx);
 			item.draw(ctx, param);
-			if (itemOffset)
-				param.offset = savedOffset;
+			ctx.restore();
 			// If we created a temporary canvas before, composite it onto the
 			// parent canvas:
 			if (tempCanvas) {
-				// Restore the temporary canvas to its state before the
-				// translation matrix was applied above.
-				ctx.restore();
+				// Restore previous offset.
+				param.offset = prevOffset;
 				// If the item has a blendMode, use BlendMode#process to
 				// composite its canvas on the parentCanvas.
 				if (item._blendMode !== 'normal') {
 					// The pixel offset of the temporary canvas to the parent
 					// canvas.
-					var pixelOffset = itemOffset.subtract(param.offset);
 					BlendMode.process(item._blendMode, ctx, parentCtx,
-						item._opacity, pixelOffset);
+						item._opacity, itemOffset.subtract(prevOffset));
 				} else {
 				// Otherwise we just need to set the globalAlpha before drawing
 				// the temporary canvas on the parent canvas.
 					parentCtx.save();
 					parentCtx.globalAlpha = item._opacity;
-					parentCtx.drawImage(tempCanvas,
-							itemOffset.x, itemOffset.y);
+					parentCtx.drawImage(tempCanvas, itemOffset.x, itemOffset.y);
 					parentCtx.restore();
 				}
 				// Return the temporary canvas, so it can be reused
