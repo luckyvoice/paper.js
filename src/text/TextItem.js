@@ -30,14 +30,18 @@ var TextItem = this.TextItem = Item.extend(/** @lends TextItem# */{
 	// so use the same name for all of them
 	_boundsType: 'bounds',
 
-	initialize: function() {
-		this.base();
+	initialize: function(pointOrMatrix) {
+		// Note that internally #characterStyle is the same as #style, but
+		// defined as an instance of CharacterStyle. We need to define it before
+		// calling this.base(), to override the default PathStyle instance.
+		this._style = CharacterStyle.create(this);
+		this._paragraphStyle = ParagraphStyle.create(this);
+		this.base(pointOrMatrix);
+		// No need to call setStyle(), since base() handles this already.
+		// Call with no parameter to initalize defaults now.
+		this.setParagraphStyle();
 		this._content = '';
 		this._lines = [];
-		this._characterStyle = CharacterStyle.create(this);
-		this.setCharacterStyle(this._project.getCurrentStyle());
-		this._paragraphStyle = ParagraphStyle.create(this);
-		this.setParagraphStyle();
 	},
 
 	/**
@@ -74,7 +78,6 @@ var TextItem = this.TextItem = Item.extend(/** @lends TextItem# */{
 
 	_clone: function(copy) {
 		copy.setContent(this._content);
-		copy.setCharacterStyle(this._characterStyle);
 		copy.setParagraphStyle(this._paragraphStyle);
 		return this.base(copy);
 	},
@@ -97,29 +100,21 @@ var TextItem = this.TextItem = Item.extend(/** @lends TextItem# */{
 	 * @type CharacterStyle
 	 * @bean
 	 */
+
+	// As explained in CharacterStyle, this is internally the same as #style.
 	getCharacterStyle: function() {
-		return this._characterStyle;
+		return this.getStyle();
 	},
 
 	setCharacterStyle: function(style) {
-		this._characterStyle.initialize(style);
+		this.setStyle(style);
 	},
 
 	/**
 	 * The paragraph style of the text item.
 	 *
+	 * @name TextItem#getParagraphStyle
 	 * @type ParagraphStyle
 	 * @bean
 	 */
-	getParagraphStyle: function() {
-		return this._paragraphStyle;
-	},
-
-	setParagraphStyle: function(style) {
-		this._paragraphStyle.initialize(style);
-	},
-	
-	_getFontString: function() {
-		return this.getFontWeight() + ' ' + this.getFontSize() + 'px ' + this.getFont();
-	}
 });

@@ -58,6 +58,9 @@ var View = this.View = Base.extend(Callback, /** @lends View# */{
 						count: count++
 					}));
 					before = now;
+					// Update framerate stats
+					if (that._stats)
+						that._stats.update();
 					// Automatically draw view on each frame.
 					that.draw(true);
 				};
@@ -188,7 +191,7 @@ var View = this.View = Base.extend(Callback, /** @lends View# */{
 		}
 	},
 
-	_transform: function(matrix, flags) {
+	_transform: function(matrix) {
 		this._matrix.preConcatenate(matrix);
 		// Force recalculation of these values next time they are requested.
 		this._bounds = null;
@@ -432,7 +435,7 @@ var View = this.View = Base.extend(Callback, /** @lends View# */{
 				var view = View._views[i];
 				if (view && view.isVisible()) {
 					View._focused = tempFocus = view;
-					throw Base.stop;
+					break;
 				}
 			}
 		}

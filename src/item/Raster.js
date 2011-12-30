@@ -34,8 +34,8 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 	 *
 	 * @param {HTMLImageElement|Canvas|string} [object]
 	 */
-	initialize: function(object) {
-		this.base();
+	initialize: function(object, pointOrMatrix) {
+		this.base(pointOrMatrix);
 		if (object.getContext) {
 			this.setCanvas(object);
 		} else {
@@ -132,7 +132,7 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 	 * @type Context
 	 * @bean
 	 */
-	getContext: function() {
+	getContext: function(/* notifyChange */) {
 		if (!this._context)
 			this._context = this.getCanvas().getContext('2d');
 		// Support a hidden parameter that indicates if the context will be used
@@ -163,7 +163,7 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 		this._size = Size.create(canvas.width, canvas.height);
 		this._image = null;
 		this._context = null;
-		this._changed(Change.GEOMETRY);
+		this._changed(Change.GEOMETRY | Change.PIXELS);
 	},
 
 	/**
@@ -228,10 +228,10 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 	 * specified path, rectangle or point.
 	 */
 	getAverageColor: function(object) {
-		if (!object)
-			object = this.getBounds();
 		var bounds, path;
-		if (object instanceof PathItem) {
+		if (!object) {
+			bounds = this.getBounds();
+		} else if (object instanceof PathItem) {
 			// TODO: What if the path is smaller than 1 px?
 			// TODO: How about rounding of bounds.size?
 			path = object;
@@ -253,7 +253,7 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 		var ctx = Raster._sampleContext;
 		if (!ctx) {
 			ctx = Raster._sampleContext = CanvasProvider.getCanvas(
-					sampleSize.clone()).getContext('2d');
+					new Size(sampleSize)).getContext('2d');
 		} else {
 			// Clear the sample canvas:
 			ctx.clearRect(0, 0, sampleSize, sampleSize);
@@ -389,8 +389,7 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 	},
 
 	_hitTest: function(point, options) {
-		point = this._matrix._inverseTransform(point);
-		if (point.isInside(new Rectangle(this._size).setCenter(0, 0))) {
+		if (point.isInside(this._getBounds())) {
 			var that = this;
 			return new HitResult('pixel', that, {
 				offset: point.add(that._size.divide(2)).round(),
@@ -403,12 +402,12 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 	},
 
 	draw: function(ctx, param) {
-		if (param.selection) {
-			var bounds = new Rectangle(this._size).setCenter(0, 0);
-			Item.drawSelectedBounds(bounds, ctx, this._matrix);
-		} else {
-			ctx.drawImage(this._canvas || this._image,
-					-this._size.width / 2, -this._size.height / 2);
-		}
+		ctx.drawImage(this._canvas || this._image,
+				-this._size.width / 2, -this._size.height / 2);
+	},
+
+	drawSelected: function(ctx, matrix) {
+		Item.drawSelectedBounds(new Rectangle(this._size).setCenter(0, 0), ctx,
+				matrix);
 	}
 });

@@ -31,11 +31,14 @@
  * text.paragraphStyle.justification = 'center';
  */
 var ParagraphStyle = this.ParagraphStyle = Style.extend(/** @lends ParagraphStyle# */{
+	_owner: TextItem,
+	_style: 'paragraphStyle',
 	_defaults: {
 		justification: 'left'
 	},
-	_owner: TextItem,
-	_style: '_paragraphStyle'
+	_flags: {
+		justification: Change.GEOMETRY
+	}
 
 	/**
 	 * ParagraphStyle objects don't need to be created directly. Just pass an

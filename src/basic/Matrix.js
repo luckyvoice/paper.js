@@ -66,8 +66,7 @@ var Matrix = this.Matrix = Base.extend(/** @lends Matrix# */{
 				ok = false;
 			}
 		} else if (count == 0) {
-			this._a = this._d = 1;
-			this._c = this._b = this._tx = this._ty = 0;
+			this.setIdentity();
 		} else {
 			ok = false;
 		}
@@ -101,6 +100,12 @@ var Matrix = this.Matrix = Base.extend(/** @lends Matrix# */{
 		this._d = d;
 		this._tx = tx;
 		this._ty = ty;
+		return this;
+	},
+
+	setIdentity: function() {
+		this._a = this._d = 1;
+		this._c = this._b = this._tx = this._ty = 0;
 		return this;
 	},
 
@@ -312,9 +317,9 @@ var Matrix = this.Matrix = Base.extend(/** @lends Matrix# */{
 			d = this._d;
 		this._a = mx._a * a + mx._c * b;
 		this._b = mx._b * a + mx._d * b;
-		this._tx += mx._tx * a + mx._ty * b;
 		this._c = mx._a * c + mx._c * d;
 		this._d = mx._b * c + mx._d * d;
+		this._tx += mx._tx * a + mx._ty * b;
 		this._ty += mx._tx * c + mx._ty * d;
 		return this;
 	},
@@ -333,8 +338,8 @@ var Matrix = this.Matrix = Base.extend(/** @lends Matrix# */{
 			tx = this._tx,
 			ty = this._ty;
 		this._a = mx._a * a + mx._b * c;
-		this._c = mx._c * a + mx._d * c;
 		this._b = mx._a * b + mx._b * d;
+		this._c = mx._c * a + mx._d * c;
 		this._d = mx._c * b + mx._d * d;
 		this._tx = mx._a * tx + mx._b * ty + mx._tx;
 		this._ty = mx._c * tx + mx._d * ty + mx._ty;
@@ -468,13 +473,13 @@ var Matrix = this.Matrix = Base.extend(/** @lends Matrix# */{
 	},
 
 	getTranslation: function() {
-		return new Point(this._tx, this._ty);
+		return Point.create(this._tx, this._ty);
 	},
 
 	getScaling: function() {
 		var hor = Math.sqrt(this._a * this._a + this._c * this._c),
 			ver = Math.sqrt(this._b * this._b + this._d * this._d);
-		return new Point(this._a < 0 ? -hor : hor, this._b < 0 ? -ver : ver);
+		return Point.create(this._a < 0 ? -hor : hor, this._b < 0 ? -ver : ver);
 	},
 
 	/**

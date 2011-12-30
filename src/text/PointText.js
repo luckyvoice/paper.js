@@ -35,14 +35,13 @@ var PointText = this.PointText = TextItem.extend(/** @lends PointText# */{
 	 * text.fillColor = 'black';
 	 * text.content = 'The contents of the point text';
 	 */
-	initialize: function(point) {
-		this.base();
-		this._point = Point.read(arguments).clone();
-		this._matrix = new Matrix().translate(this._point);
+	initialize: function(pointOrMatrix) {
+		this.base(pointOrMatrix);
+		this._point = this._matrix.getTranslation();
 	},
 
 	clone: function() {
-		return this._clone(new PointText(this._point));
+		return this._clone(new PointText(this._matrix));
 	},
 
 	/**
@@ -62,37 +61,28 @@ var PointText = this.PointText = TextItem.extend(/** @lends PointText# */{
 		this.translate(Point.read(arguments).subtract(this._point));
 	},
 
-	_transform: function(matrix, flags) {
-		this._matrix.preConcatenate(matrix);
-		// Also transform _point:
+	_transform: function(matrix) {
+		// Transform _point:
 		matrix._transformPoint(this._point, this._point);
 	},
 
 	draw: function(ctx) {
 		if (!this._content)
 			return;
-		ctx.save();
-		ctx.font = this._getFontString();
+		this._setStyles(ctx);
+		var style = this._style,
+			leading = this.getLeading(),
+			lines = this._lines;
+		ctx.font = style.getFontStyle();
 		ctx.textAlign = this.getJustification();
-		this._matrix.applyToContext(ctx);
-		var fillColor = this.getFillColor(),
-			strokeColor = this.getStrokeColor(),
-			leading = this.getLeading();
-		if (!fillColor || !strokeColor)
-			ctx.globalAlpha = this._opacity;
-		if (fillColor)
-			ctx.fillStyle = fillColor.getCanvasStyle(ctx);
-		if (strokeColor)
-			ctx.strokeStyle = strokeColor.getCanvasStyle(ctx);
-		for (var i = 0, l = this._lines.length; i < l; i++) {
-			var line = this._lines[i];
-			if (fillColor)
+		for (var i = 0, l = lines.length; i < l; i++) {
+			var line = lines[i];
+			if (style._fillColor)
 				ctx.fillText(line, 0, 0);
-			if (strokeColor)
+			if (style._strokeColor)
 				ctx.strokeText(line, 0, 0);
 			ctx.translate(0, leading);
 		}
-		ctx.restore();
 	}
 }, new function() {
 	var context = null;
@@ -107,7 +97,7 @@ var PointText = this.PointText = TextItem.extend(/** @lends PointText# */{
 				x = 0;
 			// Measure the real width of the text. Unfortunately, there is no
 			// sane way to measure text height with canvas
-			context.font = this._getFontString();
+			context.font = this._style.getFontStyle();
 			var width = 0;
 			for (var i = 0, l = this._lines.length; i < l; i++)
 				width = Math.max(width, context.measureText(

@@ -21,6 +21,7 @@
  *
  * @extends PathItem
  */
+// DOCS: Explain that path matrix is always applied with each transformation.
 var Path = this.Path = PathItem.extend(/** @lends Path# */{
 	/**
 	 * Creates a new Path item and places it at the top of the active layer.
@@ -206,21 +207,38 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 	// path, with the added benefit that b can be < a, and closed looping is
 	// taken into account.
 
-	_transform: function(matrix, flags) {
-		if (matrix && !matrix.isIdentity()) {
-			var coords = new Array(6);
-			for (var i = 0, l = this._segments.length; i < l; i++) {
-				this._segments[i]._transformCoordinates(matrix, coords, true);
-			}
-			// TODO: Can't we access _style._fillColor, as we do in strokeBounds?
-			var fillColor = this.getFillColor(),
-				strokeColor = this.getStrokeColor();
-			// Try calling transform on colors in case they are GradientColors.
-			if (fillColor && fillColor.transform)
-				fillColor.transform(matrix);
-			if (strokeColor && strokeColor.transform)
-				strokeColor.transform(matrix);
+	// DOCS: Explain that path matrix is always applied with each transformation.
+	transform: function(matrix) {
+		return this.base(matrix, true);
+	},
+
+	getMatrix: function() {
+		// Override matrix getter to always return null, since Paths act as if
+		// they do not have a matrix, and always directly apply transformations
+		// to their segment points.
+		return null;
+	},
+
+	setMatrix: function(matrix) {
+		// Do nothing for the same reason as above.
+	},
+
+	_apply: function(matrix) {
+		var coords = new Array(6);
+		for (var i = 0, l = this._segments.length; i < l; i++) {
+			this._segments[i]._transformCoordinates(matrix, coords, true);
 		}
+		// See #draw() for an explanation of why we can access _style properties
+		// directly here:
+		var style = this._style,
+			fillColor = style._fillColor,
+			strokeColor = style._strokeColor;
+		// Try calling transform on colors in case they are GradientColors.
+		if (fillColor && fillColor.transform)
+			fillColor.transform(matrix);
+		if (strokeColor && strokeColor.transform)
+			strokeColor.transform(matrix);
+		return true;
 	},
 
 	/**
@@ -1184,12 +1202,12 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 	 * @return {CurveLocation} The location on the path that's the closest to
 	 * the specified point
 	 */
-	getNearestLocation: function(point, matrix) {
+	getNearestLocation: function(point) {
 		var curves = this.getCurves(),
 			minDist = Infinity,
 			minLoc = null;
 		for (var i = 0, l = curves.length; i < l; i++) {
-			var loc = curves[i].getNearestLocation(point, matrix);
+			var loc = curves[i].getNearestLocation(point);
 			if (loc._distance < minDist) {
 				minDist = loc._distance;
 				minLoc = loc;
@@ -1207,17 +1225,17 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 	 * @return {Point} The point on the path that's the closest to the specified
 	 * point
 	 */
-	getNearestPoint: function(point, matrix) {
-		return this.getNearestLocation(point, matrix).getPoint();
+	getNearestPoint: function(point) {
+		return this.getNearestLocation(point).getPoint();
 	},
 
-	contains: function(point, matrix) {
+	contains: function(point) {
 		point = Point.read(arguments);
 		// Note: This only works correctly with even-odd fill rule, or paths
 		// that do not overlap with themselves.
 		// TODO: Find out how to implement the "Point In Polygon" problem for
 		// non-zero fill rule.
-		if (!this._closed || !this.getRoughBounds(matrix)._containsPoint(point))
+		if (!this._closed || !this.getRoughBounds()._containsPoint(point))
 			return false;
 		// Use the crossing number algorithm, by counting the crossings of the
 		// beam in right y-direction with the shape, and see if it's an odd
@@ -1228,33 +1246,38 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 			// Reuse one array for root-finding, give garbage collector a break
 			roots = [];
 		for (var i = 0, l = curves.length; i < l; i++)
-			crossings += curves[i].getCrossings(point, matrix, roots);
+			crossings += curves[i].getCrossings(point, roots);
 		return (crossings & 1) == 1;
 	},
 
-	_hitTest: function(point, options, matrix) {
-		// TODO: Can't we access _style._strokeColor, as we do in strokeBounds?
-		var tolerance = options.tolerance || 0,
-			radius = (options.stroke && this.getStrokeColor()
-					? this.getStrokeWidth() / 2 : 0) + tolerance,
+	_hitTest: function(point, options) {
+		// See #draw() for an explanation of why we can access _style properties
+		// directly here:
+		var style = this._style,
+			tolerance = options.tolerance || 0,
+			radius = (options.stroke && style._strokeColor
+					? style._strokeWidth / 2 : 0) + tolerance,
 			loc,
 			res;
 		// If we're asked to query for segments, ends or handles, do all that
 		// before stroke or fill.
 		var coords = [],
 			that = this;
-		function checkSegment(segment, ends) {
-			segment._transformCoordinates(matrix, coords);
-			for (var j = ends || options.segments ? 0 : 2,
-					m = !ends && options.handles ? 6 : 2; j < m; j += 2) {
-				if (point.getDistance(coords[j], coords[j + 1]) < tolerance) {
-					return new HitResult(j == 0 ? 'segment'
-							: 'handle-' + (j == 2 ? 'in' : 'out'), that, {
-								segment: segment,
-								point: Point.create(coords[j], coords[j + 1])
-							});
-				}
-			}
+		function checkPoint(seg, pt, name) {
+			// TODO: We need to transform the point back to the coordinate
+			// system of the DOM level on which the inquiry was started!
+			if (point.getDistance(pt) < tolerance)
+				return new HitResult(name, that, { segment: seg, point: pt });
+		}
+		function checkSegment(seg, ends) {
+			var point = seg._point;
+			// Note, when checking for ends, we don't also check for handles,
+			// since this will happen afterwards in a separate loop, see below.
+			return (ends || options.segments)
+					&& checkPoint(seg, point, 'segment')
+				|| (!ends && options.handles) && (
+					checkPoint(seg, point.add(seg._handleIn), 'handle-in') ||
+					checkPoint(seg, point.add(seg._handleOut), 'handle-out'));
 		}
 		if (options.ends && !options.segments && !this._closed) {
 			if (res = checkSegment(this.getFirstSegment(), true)
@@ -1268,17 +1291,19 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 		}
 		// If we're querying for stroke, perform that before fill
 		if (options.stroke && radius > 0)
-			loc = this.getNearestLocation(point, matrix);
+			loc = this.getNearestLocation(point);
 		// Don't process loc yet, as we also need to query for stroke after fill
 		// in some cases. Simply skip fill query if we already have a matching
 		// stroke.
 		if (!(loc && loc._distance <= radius) && options.fill
-				&& this.getFillColor() && this.contains(point, matrix))
+				&& style._fillColor && this.contains(point))
 			return new HitResult('fill', this);
 		// Now query stroke if we haven't already
 		if (!loc && options.stroke && radius > 0)
-			loc = this.getNearestLocation(point, matrix);
+			loc = this.getNearestLocation(point);
 		if (loc && loc._distance <= radius)
+			// TODO: Do we need to transform the location back to the coordinate
+			// system of the DOM level on which the inquiry was started?
 			return options.stroke
 					? new HitResult('stroke', this, { location: loc })
 					: new HitResult('fill', this);
@@ -1301,26 +1326,44 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 	// SegmentPoint objects maybe seem a bit tedious but is worth the benefit in
 	// performance.
 
-	function drawHandles(ctx, segments) {
+	function drawHandles(ctx, segments, matrix) {
+		var coords = new Array(6);
 		for (var i = 0, l = segments.length; i < l; i++) {
-			var segment = segments[i],
-				point = segment._point,
-				state = segment._selectionState,
-				selected = state & SelectionState.POINT;
+			var segment = segments[i];
+			segment._transformCoordinates(matrix, coords, false);
+			var state = segment._selectionState,
+				selected = state & SelectionState.POINT,
+				pX = coords[0],
+				pY = coords[1];
+
+			function drawHandle(index) {
+				var hX = coords[index],
+					hY = coords[index + 1];
+				if (pX != hX || pY != hY) {
+					ctx.beginPath();
+					ctx.moveTo(pX, pY);
+					ctx.lineTo(hX, hY);
+					ctx.stroke();
+					ctx.beginPath();
+					ctx.arc(hX, hY, 1.75, 0, Math.PI * 2, true);
+					ctx.fill();
+				}
+			}
+
 			if (selected || (state & SelectionState.HANDLE_IN))
-				drawHandle(ctx, point, segment._handleIn);
+				drawHandle(2);
 			if (selected || (state & SelectionState.HANDLE_OUT))
-				drawHandle(ctx, point, segment._handleOut);
+				drawHandle(4);
 			// Draw a rectangle at segment.point:
 			ctx.save();
 			ctx.beginPath();
-			ctx.rect(point._x - 2, point._y - 2, 4, 4);
+			ctx.rect(pX - 2, pY - 2, 4, 4);
 			ctx.fill();
 			// If the point is not selected, draw a white square that is 1 px
 			// smaller on all sides:
 			if (!selected) {
 				ctx.beginPath();
-				ctx.rect(point._x - 1, point._y - 1, 2, 2);
+				ctx.rect(pX - 1, pY - 1, 2, 2);
 				ctx.fillStyle = '#ffffff';
 				ctx.fill();
 			}
@@ -1328,44 +1371,55 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 		}
 	}
 
-	function drawHandle(ctx, point, handle) {
-		if (!handle.isZero()) {
-			var handleX = point._x + handle._x,
-				handleY = point._y + handle._y;
-			ctx.beginPath();
-			ctx.moveTo(point._x, point._y);
-			ctx.lineTo(handleX, handleY);
-			ctx.stroke();
-			ctx.beginPath();
-			ctx.arc(handleX, handleY, 1.75, 0, Math.PI * 2, true);
-			ctx.fill();
-		}
-	}
-
-	function drawSegments(ctx, path) {
+	function drawSegments(ctx, path, matrix) {
 		var segments = path._segments,
 			length = segments.length,
-			handleOut, outX, outY;
+			coords = new Array(6),
+			first = true,
+			pX, pY,
+			inX, inY,
+			outX, outY;
 
 		function drawSegment(i) {
-			var segment = segments[i],
-				point = segment._point,
-				x = point._x,
-				y = point._y,
-				handleIn = segment._handleIn;
-			if (!handleOut) {
-				ctx.moveTo(x, y);
+			var segment = segments[i];
+			// Optimise code when no matrix is provided by accessing semgent
+			// points hand handles directly, since this is the default when
+			// drawing paths. Matrix is only used for drawing selections.
+			if (matrix) {
+				segment._transformCoordinates(matrix, coords, false);
+				pX = coords[0];
+				pY = coords[1];
 			} else {
-				if (handleIn.isZero() && handleOut.isZero()) {
-					ctx.lineTo(x, y);
+				var point = segment._point;
+				pX = point._x;
+				pY = point._y;
+			}
+			if (first) {
+				ctx.moveTo(pX, pY);
+				first = false;
+			} else {
+				if (matrix) {
+					inX = coords[2];
+					inY = coords[3];
 				} else {
-					ctx.bezierCurveTo(outX, outY,
-							handleIn._x + x, handleIn._y + y, x, y);
+					var handle = segment._handleIn;
+					inX = pX + handle._x;
+					inY = pY + handle._y;
+				}
+				if (inX == pX && inY == pY && outX == pX && outY == pY) {
+					ctx.lineTo(pX, pY);
+				} else {
+					ctx.bezierCurveTo(outX, outY, inX, inY, pX, pY);
 				}
 			}
-			handleOut = segment._handleOut;
-			outX = handleOut._x + x;
-			outY = handleOut._y + y;
+			if (matrix) {
+				outX = coords[4];
+				outY = coords[5];
+			} else {
+				var handle = segment._handleOut;
+				outX = pX + handle._x;
+				outY = pY + handle._y;
+			}
 		}
 
 		for (var i = 0; i < length; i++)
@@ -1375,68 +1429,65 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 			drawSegment(0);
 	}
 
-	function drawDashes(ctx, path, dashArray, dashOffset) {
-		var flattener = new PathFlattener(path),
-			from = dashOffset, to,
-			i = 0;
-		while (from < flattener.length) {
-			to = from + dashArray[(i++) % dashArray.length];
-			flattener.drawPart(ctx, from, to);
-			from = to + dashArray[(i++) % dashArray.length];
-		}
-	}
-
 	return {
 		draw: function(ctx, param) {
 			if (!param.compound)
 				ctx.beginPath();
 
-			// TODO: Can't we access _style._strokeColor, as we do in strokeBounds?
-			var fillColor = this.getFillColor(),
-				strokeColor = this.getStrokeColor(),
-				dashArray = this.getDashArray() || [], // TODO: Always defined?
-				hasDash = !!dashArray.length;
+			// We can access styles directly on the internal _styles object,
+			// since Path items do not have children, thus do not need style
+			// accessors for merged styles.
+			var style = this._style,
+				fillColor = style._fillColor,
+				strokeColor = style._strokeColor,
+				dashArray = style._dashArray,
+				hasDash = strokeColor && dashArray && dashArray.length;
 
-			if (param.compound || param.selection || this._clipMask || fillColor
+			// Prepare the canvas path if we have any situation that requires it
+			// to be defined.
+			if (param.compound || this._clipMask || fillColor
 					|| strokeColor && !hasDash) {
 				drawSegments(ctx, this);
 			}
 
-			// If we are drawing the selection of a path, stroke it and draw
-			// its handles:
-			if (param.selection) {
-				ctx.stroke();
-				drawHandles(ctx, this._segments);
+			if (this._clipMask) {
+				ctx.clip();
 			} else if (!param.compound && (fillColor || strokeColor)) {
 				// If the path is part of a compound path or doesn't have a fill
 				// or stroke, there is no need to continue.
 				ctx.save();
 				this._setStyles(ctx);
-				// If the path only defines a strokeColor or a fillColor,
-				// draw it directly with the globalAlpha set, otherwise
-				// we will do it later when we composite the temporary
-				// canvas.
-				if (!fillColor || !strokeColor)
-					ctx.globalAlpha = this._opacity;
-				if (fillColor) {
-					ctx.fillStyle = fillColor.getCanvasStyle(ctx);
+				if (fillColor)
 					ctx.fill();
-				}
 				if (strokeColor) {
-					ctx.strokeStyle = strokeColor.getCanvasStyle(ctx);
 					if (hasDash) {
 						// We cannot use the path created by drawSegments above
 						// Use CurveFlatteners to draw dashed paths:
 						ctx.beginPath();
-						drawDashes(ctx, this, dashArray, this.getDashOffset());
+						var flattener = new PathFlattener(this),
+							from = style._dashOffset, to,
+							i = 0;
+						while (from < flattener.length) {
+							to = from + dashArray[(i++) % dashArray.length];
+							flattener.drawPart(ctx, from, to);
+							from = to + dashArray[(i++) % dashArray.length];
+						}
 					}
 					ctx.stroke();
 				}
 				ctx.restore();
 			}
+		},
+
+		drawSelected: function(ctx, matrix) {
+			ctx.beginPath();
+			drawSegments(ctx, this, matrix);
+			// Now stroke it and draw its handles:
+			ctx.stroke();
+			drawHandles(ctx, this._segments, matrix);
 		}
 	};
-}, new function() { // Inject methods that require scoped privates
+}, new function() { // Path Smoothing
 
 	/**
 	 * Solves a tri-diagonal system for one of coordinates (x or y) of first
@@ -1464,22 +1515,7 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 		return x;
 	};
 
-	var styles = {
-		getStrokeWidth: 'lineWidth',
-		getStrokeJoin: 'lineJoin',
-		getStrokeCap: 'lineCap',
-		getMiterLimit: 'miterLimit'
-	};
-
 	return {
-		_setStyles: function(ctx) {
-			for (var i in styles) {
-				var style = this._style[i]();
-				if (style)
-					ctx[styles[i]] = style;
-			}
-		},
-
 		// Note: Documentation for smooth() is in PathItem
 		smooth: function() {
 			// This code is based on the work by Oleg V. Polikarpotchkin,
@@ -1563,13 +1599,13 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 					segment.setHandleIn(handleIn.subtract(segment._point));
 				if (i < n) {
 					segment.setHandleOut(
-							new Point(x[i], y[i]).subtract(segment._point));
+							Point.create(x[i], y[i]).subtract(segment._point));
 					if (i < n - 1)
-						handleIn = new Point(
+						handleIn = Point.create(
 								2 * knots[i + 1]._x - x[i + 1],
 								2 * knots[i + 1]._y - y[i + 1]);
 					else
-						handleIn = new Point(
+						handleIn = Point.create(
 								(knots[n]._x + x[n - 1]) / 2,
 								(knots[n]._y + y[n - 1]) / 2);
 				}
@@ -1873,8 +1909,8 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 		// Get rotated hor and ver vectors, and determine rotation angle
 		// and elipse values from them:
 		var mx = matrix.createShiftless(),
-			hor = mx.transform(new Point(radius, 0)),
-			ver = mx.transform(new Point(0, radius)),
+			hor = mx.transform(Point.create(radius, 0)),
+			ver = mx.transform(Point.create(0, radius)),
 			phi = hor.getAngleInRadians(),
 			a = hor.getLength(),
 			b = ver.getLength();
@@ -1886,50 +1922,51 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 		// dx/dt = a sin(t) cos(phi) + b cos(t) sin(phi) = 0
 		// derivative of y = cy + b*sin(t)*cos(phi) + a*cos(t)*sin(phi)
 		// dy/dt = b cos(t) cos(phi) - a sin(t) sin(phi) = 0
-		// this can be simplified to:
+		// This can be simplified to:
 		// tan(t) = -b * tan(phi) / a // x
-		// tan(t) = b * cot(phi) / a // y
+		// tan(t) =  b * cot(phi) / a // y
 		// Solving for t gives:
-		// t = pi * n - arctan(b tan(phi)) // x
-		// t = pi * n + arctan(b cot(phi)) // y
-		var tx = - Math.atan(b * Math.tan(phi)),
-			ty = + Math.atan(b / Math.tan(phi)),
-			// Due to symetry, we don't need to cycle through pi * n solutions:
-			x = a * Math.cos(tx) * Math.cos(phi)
-				- b * Math.sin(tx) * Math.sin(phi),
-			y = b * Math.sin(ty) * Math.cos(phi)
-				+ a * Math.cos(ty) * Math.sin(phi);
-		return [Math.abs(x), Math.abs(y)];
+		// t = pi * n - arctan(b * tan(phi) / a) // x
+		// t = pi * n + arctan(b * cot(phi) / a)
+		//   = pi * n + arctan(b / tan(phi) / a) // y
+		var sin = Math.sin(phi),
+			cos = Math.cos(phi),
+			tan = Math.tan(phi),
+			tx = -Math.atan(b * tan / a),
+			ty = Math.atan(b / (tan * a));
+		// Due to symetry, we don't need to cycle through pi * n solutions:
+		return [Math.abs(a * Math.cos(tx) * cos - b * Math.sin(tx) * sin),
+				Math.abs(b * Math.sin(ty) * cos + a * Math.cos(ty) * sin)];
 	}
 
 	/**
 	 * Returns the bounding rectangle of the item including stroke width.
 	 */
 	function getStrokeBounds(matrix) {
-		// TODO: Should we access this.getStrokeColor, as we do in _transform?
+		// See #draw() for an explanation of why we can access _style
+		// properties directly here:
+		var style = this._style;
 		// TODO: Find a way to reuse 'bounds' cache instead?
-		if (!this._style._strokeColor || !this._style._strokeWidth)
+		if (!style._strokeColor || !style._strokeWidth)
 			return getBounds.call(this, matrix);
-		var width = this.getStrokeWidth(),
+		var width = style._strokeWidth,
 			radius = width / 2,
 			padding = getPenPadding(radius, matrix),
-			join = this.getStrokeJoin(),
-			cap = this.getStrokeCap(),
+			join = style._strokeJoin,
+			cap = style._strokeCap,
 			// miter is relative to width. Divide it by 2 since we're
 			// measuring half the distance below
-			miter = this.getMiterLimit() * width / 2,
+			miter = style._miterLimit * width / 2,
 			segments = this._segments,
 			length = segments.length,
-			// It seems to be compatible with Ai we need to pass pen padding
-			// untransformed to getBounds
-			bounds = getBounds.call(this, matrix, getPenPadding(radius));
+			bounds = getBounds.call(this, matrix, padding);
 		// Create a rectangle of padding size, used for union with bounds
 		// further down
 		var joinBounds = new Rectangle(new Size(padding).multiply(2));
 
 		function add(point) {
 			bounds = bounds.include(matrix
-				? matrix.transform(point) : point);
+				? matrix._transformPoint(point, point) : point);
 		}
 
 		function addBevelJoin(curve, t) {
@@ -1945,7 +1982,7 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 			if (join === 'round' || !segment._handleIn.isZero()
 					&& !segment._handleOut.isZero()) {
 				bounds = bounds.unite(joinBounds.setCenter(matrix
-					? matrix.transform(segment._point) : segment._point));
+					? matrix._transformPoint(segment._point) : segment._point));
 			} else if (join == 'bevel') {
 				var curve = segment.getCurve();
 				addBevelJoin(curve, 0);
@@ -1958,9 +1995,9 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 					normal2 = curve2.getNormal(0).normalize(radius),
 					// Intersect the two lines
 					line1 = new Line(point.subtract(normal1),
-							new Point(-normal1.y, normal1.x)),
+							Point.create(-normal1.y, normal1.x)),
 					line2 = new Line(point.subtract(normal2),
-							new Point(-normal2.y, normal2.x)),
+							Point.create(-normal2.y, normal2.x)),
 					corner = line1.intersect(line2);
 				// Now measure the distance from the segment to the
 				// intersection, which his half of the miter distance
@@ -1985,7 +2022,7 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 				// For square caps, we need to step away from point in the
 				// direction of the tangent, which is the rotated normal
 				if (cap === 'square')
-					point = point.add(normal.y, -normal.x);
+					point = point.add(normal.rotate(t == 0 ? -90 : 90));
 				add(point.add(normal));
 				add(point.subtract(normal));
 				break;
@@ -2044,10 +2081,11 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 		// Delegate to handleBounds, but pass on radius values for stroke and
 		// joins. Hanlde miter joins specially, by passing the largets radius
 		// possible.
-		var width = this.getStrokeWidth();
+		var style = this._style,
+			width = style._strokeWidth;
 		return getHandleBounds.call(this, matrix, width,
-				this.getStrokeJoin() == 'miter'
-					? width * this.getMiterLimit()
+				style._strokeJoin == 'miter'
+					? width * style._miterLimit
 					: width);
 	}
 

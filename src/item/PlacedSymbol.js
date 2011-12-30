@@ -27,7 +27,7 @@ var PlacedSymbol = this.PlacedSymbol = PlacedItem.extend(/** @lends PlacedSymbol
 	 * Creates a new PlacedSymbol Item.
 	 *
 	 * @param {Symbol} symbol the symbol to place
-	 * @param {Point|Matrix} [matrixOrOffset] the center point of the placed
+	 * @param {Point|Matrix} [pointOrMatrix] the center point of the placed
 	 * symbol or a {@link Matrix} transformation to transform the placed symbol
 	 * with.
 	 *
@@ -61,14 +61,9 @@ var PlacedSymbol = this.PlacedSymbol = PlacedItem.extend(/** @lends PlacedSymbol
 	 *     instance.scale(0.25 + Math.random() * 0.75);
 	 * }
 	 */
-	initialize: function(symbol, matrixOrOffset) {
-		this.base();
+	initialize: function(symbol, pointOrMatrix) {
+		this.base(pointOrMatrix);
 		this.setSymbol(symbol instanceof Symbol ? symbol : new Symbol(symbol));
-		this._matrix = matrixOrOffset !== undefined
-			? matrixOrOffset instanceof Matrix
-				? matrixOrOffset
-				: new Matrix().translate(Point.read(arguments, 1))
-			: new Matrix();
 	},
 
 	/**
@@ -96,16 +91,18 @@ var PlacedSymbol = this.PlacedSymbol = PlacedItem.extend(/** @lends PlacedSymbol
 
 	_getBounds: function(type, matrix) {
 		// Redirect the call to the symbol definition to calculate the bounds
-		return this.symbol._definition._getBounds(type, matrix);
+		// TODO: Implement bounds caching through passing on of cacheItem, so
+		// that Symbol#_changed() notification become unnecessary!
+		return this.symbol._definition._getCachedBounds(type, matrix);
 	},
 
 	draw: function(ctx, param) {
-		if (param.selection) {
-			Item.drawSelectedBounds(this.symbol._definition.getBounds(), ctx,
-					this._matrix);
-		} else {
-			Item.draw(this.symbol.getDefinition(), ctx, param);
-		}
+		Item.draw(this.symbol._definition, ctx, param);
+	},
+
+	drawSelected: function(ctx, matrix) {
+		Item.drawSelectedBounds(this.symbol._definition.getBounds(), ctx,
+				matrix);
 	}
 
 	// TODO: PlacedSymbol#embed()

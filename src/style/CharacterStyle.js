@@ -30,17 +30,26 @@
  * 	fillColor: 'black',
  * };
  */
+// Note that CharacterStyle extends PathStyle and thus injects the same
+// accessors into its _owner TextItem, overriding those previously defined by
+// PathStyle for Item. It is also returned from TextItem#getStyle instead of
+// PathStyle. TextItem#characterStyle is now simply a pointer to #style.
 var CharacterStyle = this.CharacterStyle = PathStyle.extend(/** @lends CharacterStyle# */{
+	_owner: TextItem,
+	_style: 'style',
 	_defaults: Base.merge(PathStyle.prototype._defaults, {
 		// Override default fillColor of CharacterStyle
 		fillColor: 'black',
-		fontSize: 10,
-		fontWeight: 'normal',
+		fontSize: 12,
+        fontWeight: 'normal',
 		leading: null,
 		font: 'sans-serif'
 	}),
-	_owner: TextItem,
-	_style: '_characterStyle'
+	_flags: {
+		fontSize: Change.GEOMETRY,
+		leading: Change.GEOMETRY,
+		font: Change.GEOMETRY
+	}
 
 	/**
 	 * CharacterStyle objects don't need to be created directly. Just pass an
@@ -71,5 +80,9 @@ var CharacterStyle = this.CharacterStyle = PathStyle.extend(/** @lends Character
 		// Override leading to return fontSize * 1.2 by default, when undefined
 		var leading = this.base();
 		return leading != null ? leading : this.getFontSize() * 1.2;
+	},
+
+	getFontStyle: function() {
+		return this._fontSize + 'px ' + this._font;
 	}
 });

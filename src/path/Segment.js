@@ -318,6 +318,17 @@ var Segment = this.Segment = Base.extend(/** @lends Segment# */{
 		return this._path ? !!this._path.removeSegment(this._index) : false;
 	},
 
+	clone: function() {
+		return new Segment(this._point, this._handleIn, this._handleOut);
+	},
+
+	equals: function(segment) {
+		return segment == this || segment
+				&& this._point.equals(segment._point)
+				&& this._handleIn.equals(segment._handleIn)
+				&& this._handleOut.equals(segment._handleOut);
+	},
+
 	/**
 	 * @return {String} A string representation of the segment.
 	 */
