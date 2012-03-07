@@ -83,6 +83,6 @@ var CharacterStyle = this.CharacterStyle = PathStyle.extend(/** @lends Character
 	},
 
 	getFontStyle: function() {
-		return this._fontSize + 'px ' + this._font;
+		return this._fontWeight + ' ' + this._fontSize + 'px ' + this._font;
 	}
 });
