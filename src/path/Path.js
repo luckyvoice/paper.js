@@ -828,6 +828,7 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 			var handleIn = segment._handleIn;
 			segment._handleIn = segment._handleOut;
 			segment._handleOut = handleIn;
+			segment._index = i;
 		}
 		// Flip clockwise state if it's defined
 		if (this._clockwise !== undefined)
@@ -1449,6 +1450,9 @@ var Path = this.Path = PathItem.extend(/** @lends Path# */{
 					|| strokeColor && !hasDash) {
 				drawSegments(ctx, this);
 			}
+
+			if (this._closed)
+				ctx.closePath();
 
 			if (this._clipMask) {
 				ctx.clip();
