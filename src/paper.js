@@ -128,7 +128,7 @@ var paper = new function() {
 /*#*/ include('util/ProxyContext.js');
 /*#*/ } // options.browser
 
-/*#*/ include('core/PaperScript.js');
+// /*#*/ include('core/PaperScript.js');
 
 /*#*/ if (options.browser) {
 /*#*/ include('core/initialize.js');

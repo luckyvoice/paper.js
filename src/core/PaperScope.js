@@ -106,18 +106,6 @@ var PaperScope = this.PaperScope = Base.extend(/** @lends PaperScope# */{
 	 },
 
 	/**
-	 * The list of available tools.
-	 * @name PaperScope#tools
-	 * @type Tool[]
-	 */
-
-	evaluate: function(code) {
-		var res = PaperScript.evaluate(code, this);
-		View.updateFocus();
-		return res;
-	},
-
-	/**
 	 * Injects the paper scope into any other given scope. Can be used for
 	 * examle to inject the currently active PaperScope into the window's global
 	 * scope, to emulate PaperScript-style globally accessible Paper classes and
