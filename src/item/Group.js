@@ -68,7 +68,7 @@ var Group = this.Group = Item.extend(/** @lends Group# */{
 	 */
 	initialize: function(items) {
 		this.base();
-		this._clippingCompositionOperation = 'source-in';
+		this.compositing = 'source-in';
 		// Allow Group to have children and named children
 		this._children = [];
 		this._namedChildren = {};
@@ -116,45 +116,51 @@ var Group = this.Group = Item.extend(/** @lends Group# */{
 		if (child)
 			child.setClipMask(clipped);
 		return this;
-	}
-}, new function(){
-	var context = null;
+	},
 	
-	return {
-		draw: function(ctx, param) {
-		    var bounds, clipItems, context, item, originalCtx, _i, _j, _len, _len2, _ref;
-		    clipItems = this._getClipItems();
-		    // If the group is to be clipped, draw to an in-memory canvas
-		    if (clipItems.length !== 0) {
-		        originalCtx = ctx;
-		        bounds = this.getBounds();
-		        if (!context) {
-		            ctx = context = CanvasProvider.getCanvas(bounds.getSize()).getContext('2d');
-		        } else {
-		            ctx = context;
-		        }
-		        ctx.save();
-		        // Draw the items which form the mask
-		        ctx.translate(-bounds.x, -bounds.y);
-		        for (_i = 0, _len = clipItems.length; _i < _len; _i++) {
-		            item = clipItems[_i];
-		            Item.draw(item, ctx, param);
-		        }
-		        // Clip
-		        ctx.globalCompositeOperation = this._clippingCompositionOperation;
-		    }
-		    // Draw the regular items
-		    _ref = this._children;
-		    for (_j = 0, _len2 = _ref.length; _j < _len2; _j++) {
-		        item = _ref[_j];
-		        if (!item._clipMark) Item.draw(item, ctx, param);
-		    }
-		    // Draw the clipped items back to the original canvas
-		    if (clipItems.length !== 0) {
-		        originalCtx.drawImage(ctx.canvas, bounds.x, bounds.y);
-		        ctx.restore();
-		        return ctx.clearRect(0, 0, ctx.canvas.width + 1, ctx.canvas.height + 1);
-		    }
-		}
+	draw: function(ctx, param) {
+	    var bounds, tempCanvas, itemOffset, clipItems, context, item, parentCtx, _i, _j, _len, _len2, _ref;
+	    clipItems = this._getClipItems();
+	    // If the group is to be clipped, draw to an in-memory canvas
+	    if (clipItems.length !== 0) {
+	    	bounds = this.getStrokeBounds();
+			if (!bounds.width || !bounds.height)
+				return;
+			// Store previous offset and save the parent context, so we can
+			// draw onto it later
+			prevOffset = param.offset;
+			parentCtx = ctx;
+			// Floor the offset and ceil the size, so we don't cut off any
+			// antialiased pixels when drawing onto the temporary canvas.
+			itemOffset = param.offset = bounds.getTopLeft().floor();
+			tempCanvas = CanvasProvider.getCanvas(
+					bounds.getSize().ceil().add(Size.create(1, 1)));
+			// Set ctx to the context of the temporary canvas,
+			// so we draw onto it, instead of the parentCtx
+			ctx = tempCanvas.getContext('2d');
+			ctx.save()
+			// Translate the context so the topLeft of the item is at (0, 0)
+			// on the temporary canvas.
+			ctx.translate(-itemOffset.x, -itemOffset.y);
+			this._matrix.applyToContext(ctx);
+	        for (_i = 0, _len = clipItems.length; _i < _len; _i++) {
+	            item = clipItems[_i];
+	            Item.draw(item, ctx, param);
+	        }
+	        // Clip
+	        ctx.globalCompositeOperation = this.compositing;
+	    }
+	    // Draw the regular items
+	    _ref = this._children;
+	    for (_j = 0, _len2 = _ref.length; _j < _len2; _j++) {
+	        item = _ref[_j];
+	        if (!item._clipMask) Item.draw(item, ctx, param);
+	    }
+	    // Draw the clipped items back to the original canvas
+	    if (tempCanvas) {
+	        parentCtx.drawImage(ctx.canvas, itemOffset.x, itemOffset.y);
+	        ctx.restore();
+	        CanvasProvider.returnCanvas(tempCanvas);
+	    }
 	}
 });
