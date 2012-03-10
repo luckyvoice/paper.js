@@ -73,8 +73,10 @@ var PointText = this.PointText = TextItem.extend(/** @lends PointText# */{
 		var style = this._style,
 			leading = this.getLeading(),
 			lines = this._lines;
+		ctx.save();
 		ctx.font = style.getFontStyle();
 		ctx.textAlign = this.getJustification();
+		ctx.textBaseline = 'top';
 		for (var i = 0, l = lines.length; i < l; i++) {
 			var line = lines[i];
 			if (style._fillColor)
@@ -83,12 +85,14 @@ var PointText = this.PointText = TextItem.extend(/** @lends PointText# */{
 				ctx.strokeText(line, 0, 0);
 			ctx.translate(0, leading);
 		}
+		ctx.restore();
 	}
 }, new function() {
 	var context = null;
 
 	return {
 		_getBounds: function(type, matrix) {
+			if (!this._lines.length) return Rectangle.create(0, 0, 0, 0);
 			// Create an in-memory canvas on which to do the measuring
 			if (!context)
 				context = CanvasProvider.getCanvas(
@@ -101,17 +105,19 @@ var PointText = this.PointText = TextItem.extend(/** @lends PointText# */{
 			var width = 0;
 			for (var i = 0, l = this._lines.length; i < l; i++)
 				width = Math.max(width, context.measureText(
-						this._lines[i]).width);
+					this._lines[i]).width);
 			// Adjust for different justifications
 			if (justification !== 'left')
 				x -= width / (justification === 'center' ? 2: 1);
-			var leading = this.getLeading(),
-				count = this._lines.length,
-				// Until we don't have baseline measuring, assume leading / 4 as
-				// a rough guess:
-				bounds = Rectangle.create(x,
-						count ? leading / 4 + (count - 1) * leading : 0,
-						width, -count * leading);
+			var bounds = Rectangle.create(
+					x,
+					0,
+					width,
+					// Since we don't know the em height, and have no reasonable way of figuring it out, we have to
+					// make the assumption that the text is a third larger than it should be (a reasonable assumption,
+					// all things considered)
+					this._lines.length * this.getLeading() * 1.3
+				);
 			return matrix ? matrix._transformBounds(bounds, bounds) : bounds;
 		}
 	};
