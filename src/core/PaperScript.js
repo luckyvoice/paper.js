@@ -37,7 +37,7 @@ var PaperScript = this.PaperScript = new function() {
 		var handler = operators[operator];
 		if (left && left[handler]) {
 			var res = left[handler](right);
-			return operator == '!=' ? !res : res;
+			return operator === '!=' ? !res : res;
 		}
 		switch (operator) {
 		case '+': return left + right;
@@ -50,7 +50,7 @@ var PaperScript = this.PaperScript = new function() {
 		default:
 			throw new Error('Implement Operator: ' + operator);
 		}
-	};
+	}
 
 	// Sign Operators
 
@@ -109,8 +109,8 @@ var PaperScript = this.PaperScript = new function() {
 				// Handle simple mathematical operators here:
 				return handleOperator(operator, left = walk(left),
 						right = walk(right))
-						// Always return something since we're walking left and
-						// right for the handleOperator() call already.
+						// Always return a new AST for this node, since we have
+						// processed left and right int he call above!
 						|| [this[0], operator, left, right];
 			},
 
@@ -121,10 +121,10 @@ var PaperScript = this.PaperScript = new function() {
 				// of handleOperator on the right hand side.
 				var res = handleOperator(operator, left = walk(left),
 						right = walk(right));
-				if (res)
-					return [this[0], true, left, res];
-				// Always return something for the same reason as in binary
-				return [this[0], operator, left, right];
+				return res
+					? [this[0], true, left, res]
+					// Always return a new AST for the same reason as in binary
+					: [this[0], operator, left, right];
 			},
 
 			'unary-prefix': function(operator, exp) {
@@ -165,7 +165,7 @@ var PaperScript = this.PaperScript = new function() {
 			// Within this, use a function scope, so local variables to not try
 			// and set themselves on the scope object.
 			(function() {
-				var onEditOptions, onSelect, onDeselect, onReselect,
+				var onActivate, onDeactivate, onEditOptions,
 					onMouseDown, onMouseUp, onMouseDrag, onMouseMove,
 					onKeyDown, onKeyUp, onFrame, onResize;
 				res = eval(compile(code));
@@ -222,7 +222,7 @@ var PaperScript = this.PaperScript = new function() {
 			// Only load this script if it not loaded already.
 			// Support both text/paperscript and text/x-paperscript:
 			if (/^text\/(?:x-|)paperscript$/.test(script.type)
-					&& !script.getAttribute('data-paper-loaded')) {
+					&& !script.getAttribute('data-paper-ignore')) {
 				// Produce a new PaperScope for this script now. Scopes are
 				// cheap so let's not worry about the initial one that was
 				// already created.
@@ -241,7 +241,7 @@ var PaperScript = this.PaperScript = new function() {
 					evaluate(script.innerHTML, scope);
 				}
 				// Mark script as loaded now.
-				script.setAttribute('data-paper-loaded', true);
+				script.setAttribute('data-paper-ignore', true);
 			}
 		}
 	}

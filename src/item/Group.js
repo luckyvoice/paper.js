@@ -24,6 +24,8 @@
  * @extends Item
  */
 var Group = this.Group = Item.extend(/** @lends Group# */{
+	_type: 'group',
+
 	// DOCS: document new Group(item, item...);
 	/**
 	 * Creates a new Group item and places it at the top of the active layer.
@@ -72,12 +74,11 @@ var Group = this.Group = Item.extend(/** @lends Group# */{
 		// Allow Group to have children and named children
 		this._children = [];
 		this._namedChildren = {};
-		this.addChildren(!items || !Array.isArray(items)
-				|| typeof items[0] !== 'object' ? arguments : items);
+		this.addChildren(Array.isArray(items) ? items : arguments);
 	},
 
 	_changed: function(flags) {
-		// Don't use base() for reasons of performance.
+		// Don't use this.base() for reasons of performance.
 		Item.prototype._changed.call(this, flags);
 		if (flags & (ChangeFlag.HIERARCHY | ChangeFlag.CLIPPING)) {
 			// Clear cached clip items whenever hierarchy changes
@@ -117,7 +118,11 @@ var Group = this.Group = Item.extend(/** @lends Group# */{
 			child.setClipMask(clipped);
 		return this;
 	},
-	
+
+	isEmpty: function() {
+		return this._children.length == 0;
+	},
+
 	draw: function(ctx, param) {
 	    var bounds, tempCanvas, itemOffset, clipItems, context, item, parentCtx, _i, _j, _len, _len2, _ref;
 	    clipItems = this._getClipItems();

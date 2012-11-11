@@ -27,6 +27,9 @@
  * console.log(size.height); // 5
  */
 var Size = this.Size = Base.extend(/** @lends Size# */{
+	// Tell Base.read that the Point constructor supporst reading with index
+	_readIndex: true,
+
 	// DOCS: improve Size class description
 	/**
 	 * Creates a Size object with the given width and height values.
@@ -91,28 +94,34 @@ var Size = this.Size = Base.extend(/** @lends Size# */{
 	 * console.log(size.height); // 50
 	 */
 	initialize: function(arg0, arg1) {
-		if (arg1 !== undefined) {
+		var type = typeof arg0;
+		if (type === 'number') {
+			var hasHeight = typeof arg1 === 'number';
 			this.width = arg0;
-			this.height = arg1;
-		} else if (arg0 !== undefined) {
-			if (arg0 == null) {
-				this.width = this.height = 0;
-			} else if (arg0.width !== undefined) {
+			this.height = hasHeight ? arg1 : arg0;
+			if (this._read)
+				this._read = hasHeight ? 2 : 1;
+		} else if (type === 'undefined' || arg0 === null) {
+			this.width = this.height = 0;
+			if (this._read)
+				this._read = arg0 === null ? 1 : 0;
+		} else {
+			if (typeof arg0.width !== 'undefined') {
 				this.width = arg0.width;
 				this.height = arg0.height;
-			} else if (arg0.x !== undefined) {
-				this.width = arg0.x;
-				this.height = arg0.y;
 			} else if (Array.isArray(arg0)) {
 				this.width = arg0[0];
 				this.height = arg0.length > 1 ? arg0[1] : arg0[0];
-			} else if (typeof arg0 === 'number') {
-				this.width = this.height = arg0;
+			} else if (typeof arg0.x !== 'undefined') {
+				this.width = arg0.x;
+				this.height = arg0.y;
 			} else {
 				this.width = this.height = 0;
+				if (this._read)
+					this._read = 0;
 			}
-		} else {
-			this.width = this.height = 0;
+			if (this._read)
+				this._read = 1;
 		}
 	},
 
@@ -351,7 +360,7 @@ var Size = this.Size = Base.extend(/** @lends Size# */{
 	 * @return {Boolean} {@true both width and height are 0}
 	 */
 	isZero: function() {
-		return this.width == 0 && this.height == 0;
+		return Numerical.isZero(this.width) && Numerical.isZero(this.height);
 	},
 
 	/**
@@ -366,7 +375,7 @@ var Size = this.Size = Base.extend(/** @lends Size# */{
 	statics: /** @lends Size */{
 		// See Point.create()
 		create: function(width, height) {
-			return new Size(Size.dont).set(width, height);
+			return Base.create(Size).set(width, height);
 		},
 
 		/**
@@ -539,7 +548,7 @@ var LinkedSize = Size.extend({
 			// See LinkedPoint.create() for an explanation about dontLink.
 			if (dontLink)
 				return Size.create(width, height);
-			var size = new LinkedSize(LinkedSize.dont);
+			var size = Base.create(LinkedSize);
 			size._width = width;
 			size._height = height;
 			size._owner = owner;

@@ -1,0 +1,206 @@
+@font-face {
+    font-family: 'Tools';
+    src: url('fonts/tools.eot');
+    src: url('fonts/tools.eot?#iefix') format('embedded-opentype'),
+         url('fonts/tools.woff') format('woff'),
+         url('fonts/tools.svg#tools') format('svg'),
+         url('fonts/tools.ttf') format('truetype');
+    font-weight: normal;
+    font-style: normal;
+}
+
+body,
+html,
+.paperscript {
+	width: 100%;
+	height: 100%;
+}
+
+.paperscript .buttons {
+	position: absolute;
+	right: 0;
+	z-index: 1;
+}
+
+.paperscript .button,
+.paperscript .info {
+	float: right;
+	font-size: 11px;
+	line-height: 16px;
+	padding: 2px 6px;
+	-webkit-border-radius: 4px;
+	-moz-border-radius: 4px;
+	border-radius: 4px;
+	margin: 8px 8px 0 0;
+	background: #eee;
+	display: none;
+}
+
+.symbol {
+	font-family: 'Tools', 'Lucida Grande', Geneva, Verdana, Arial, sans-serif;
+	font-weight: normal;
+}
+
+.paperscript .explain {
+	background: #e3f4fc;
+}
+
+.paperscript .explain,
+.buttons-context:hover .button,
+.buttons-context:hover .info:not(.hidden) {
+	display: block;
+}
+
+.paperscript .button {
+	cursor: pointer;
+}
+
+.paperscript .button:hover {
+	background: #ddd;
+}
+
+.paperscript .button.active {
+	background: #bbb;
+}
+
+.paperscript .CodeMirror-scroll {
+	height: 100%;
+}
+
+.paperscript .source,
+.paperscript .console {
+	height: 100%;
+}
+
+.paperscript .console {
+	background: #f4f4f4;
+}
+
+.paperscript .console .content {
+	color: #666;
+	font-family: Menlo, Consolas, "Vera Mono", monospace;
+	font-size: 12px;
+	line-height: 16px;
+	overflow: auto;
+	height: 100%;
+}
+
+.paperscript .console .line {
+	margin: 0 10px;
+	text-indent: -16px;
+	padding-left: 16px;
+}
+
+.paperscript .console .line:first-child {
+	margin-top: 10px;
+}
+
+.paperscript .console .line:last-child {
+	margin-bottom: 10px;
+}
+
+.paperscript .console .error {
+	color: #f30;
+}
+
+.paperscript .CodeMirror {
+	margin: 0 !important; /* Override any potential margins again */
+}
+
+.paperscript .CodeMirror-gutter-text,
+.paperscript .CodeMirror-lines {
+	padding-top: 10px;
+	padding-bottom: 10px;
+}
+
+.paperscript .canvas {
+	line-height: 0; /* prevent weird 5px padding under canvas elements */
+	overflow: hidden !important;
+}
+
+.paperscript .canvas canvas {
+	width: 100%;
+	height: 100%;
+}
+
+.paperscript .canvas.border canvas {
+	border: 0;
+	margin: 0;
+	padding: 0;
+}
+
+.paperscript.split .canvas {
+	border: 0;
+	border-top: 0;
+}
+
+/* tools */
+
+.zoom {
+	cursor: url(assets/magnify.cur),default;
+}
+
+/* splitter */
+
+.splitter_panel {
+ position: relative;
+}
+
+.splitter_panel .hsplitter,
+.splitter_panel .vsplitter {
+    background-color: #ddd;
+    z-index: 1000;
+}
+
+.splitter_panel .vsplitter {
+    cursor: col-resize;
+    width: 3px;
+}
+
+.splitter_panel .hsplitter {
+    cursor: row-resize;
+    height: 3px;
+}
+
+.splitter_panel .vsplitter,
+.splitter_panel .left_panel,
+.splitter_panel .right_panel,
+.splitter_panel .hsplitter,
+.splitter_panel .top_panel,
+.splitter_panel .bottom_panel {
+	position: absolute;
+	overflow: auto;
+}
+
+.splitter_panel .vsplitter,
+.splitter_panel .left_panel,
+.splitter_panel .right_panel {
+	height: 100%;
+}
+
+.splitter_panel .hsplitter,
+.splitter_panel .top_panel,
+.splitter_panel .bottom_panel {
+	width: 100%;
+}
+
+.splitter_panel .top_panel,
+.splitter_panel .left_panel,
+.splitter_panel .vsplitter {
+	top: 0;
+}
+
+.splitter_panel .top_panel,
+.splitter_panel .bottom_panel,
+.splitter_panel .left_panel,
+.splitter_panel .hsplitter {
+	left: 0;
+}
+
+.splitter_panel .bottom_panel {
+	bottom: 0;
+}
+
+.splitter_panel .right_panel {
+	right: 0;
+}

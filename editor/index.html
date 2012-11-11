@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Paper.js Editor</title>
+<link rel="stylesheet" href="assets/css/style.css" type="text/css">
+<link rel="stylesheet" href="assets/css/paperscript.css" type="text/css">
+<link rel="stylesheet" href="assets/css/codemirror.css" type="text/css">
+<script src="assets/js/paper.js" type="text/javascript"></script>
+<script src="assets/js/jquery.js" type="text/javascript"></script>
+<script src="assets/js/jquery_splitter.js" type="text/javascript"></script>
+<script src="assets/js/base64.js" type="text/javascript"></script>
+<script src="assets/js/codemirror.js" type="text/javascript"></script>
+<script src="assets/js/editor.js" type="text/javascript"></script>
+</head>
+<body>
+<div class="paperscript split split-pane" data-orientation="hor" data-percentage="40%">
+    <div class="split-pane" data-orientation="ver" data-percentage="70%">
+        <div class="editor">
+            <script type="text/paperscript" canvas="canvas" data-paper-ignore="true"></script>
+            <div class="source buttons-context">
+                <div class="buttons">
+                    <div class="button run"></div>
+                </div>
+            </div>
+        </div>
+        <div class="console buttons-context">
+            <div class="buttons">
+                <div class="button clear-console">Clear</div>
+            </div>
+        </div>
+    </div>
+    <div class="canvas buttons-context">
+        <div class="buttons toolbar">
+            <div class="tools">
+            </div>
+            <div class="clear"></div>
+            <div class="info hidden"></div>
+        </div>
+        <canvas id="canvas"></canvas>
+    </div>
+</div>

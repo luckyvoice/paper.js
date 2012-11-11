@@ -128,24 +128,20 @@ var Matrix = this.Matrix = Base.extend(/** @lends Matrix# */{
 	 * @param {Point} [center] The center for the scaling transformation
 	 * @return {Matrix} This affine transform
 	 */
-	scale: function(/* scale | */ hor, ver, center) {
-		if (arguments.length < 2 || typeof ver === 'object') {
-			// hor is the single scale parameter, representing both hor and ver
-			// Read center first from argument 1, then set ver = hor (thus
-			// modifing the content of argument 1!)
-			center = Point.read(arguments, 1);
-			ver = hor;
-		} else {
-			center = Point.read(arguments, 2);
-		}
-		if (center)
-			this.translate(center);
-		this._a *= hor;
-		this._c *= hor;
-		this._b *= ver;
-		this._d *= ver;
-		if (center)
-			this.translate(center.negate());
+	scale: function(scale, center) {
+		// Do not modify scale, center, since that would arguments of which
+		// we're reading from!
+		var _scale = Point.read(arguments),
+			_center = Point.read(arguments);
+		// TODO: Isn't center always set this way??
+		if (_center)
+			this.translate(_center);
+		this._a *= _scale.x;
+		this._c *= _scale.x;
+		this._b *= _scale.y;
+		this._d *= _scale.y;
+		if (_center)
+			this.translate(_center.negate());
 		return this;
 	},
 
@@ -168,7 +164,8 @@ var Matrix = this.Matrix = Base.extend(/** @lends Matrix# */{
 	 */
 	translate: function(point) {
 		point = Point.read(arguments);
-		var x = point.x, y = point.y;
+		var x = point.x,
+			y = point.y;
 		this._tx += x * this._a + y * this._b;
 		this._ty += x * this._c + y * this._d;
 		return this;
@@ -219,24 +216,21 @@ var Matrix = this.Matrix = Base.extend(/** @lends Matrix# */{
 	 * @param {Point} [center] The center for the shear transformation
 	 * @return {Matrix} This affine transform
 	 */
-	shear: function(/* point | */ hor, ver, center) {
-		// See #scale() for explanation of this:
-		if (arguments.length < 2 || typeof ver === 'object') {
-			center = Point.read(arguments, 1);
-			ver = hor;
-		} else {
-			center = Point.read(arguments, 2);
-		}
-		if (center)
-			this.translate(center);
+	shear: function(point, center) {
+		// Do not modify point, center, since that would arguments of which
+		// we're reading from!
+		var _point = Point.read(arguments),
+			_center = Point.read(arguments);
+		if (_center)
+			this.translate(_center);
 		var a = this._a,
 			c = this._c;
-		this._a += ver * this._b;
-		this._c += ver * this._d;
-		this._b += hor * a;
-		this._d += hor * c;
-		if (center)
-			this.translate(center.negate());
+		this._a += _point.y * this._b;
+		this._c += _point.y * this._d;
+		this._b += _point.x * a;
+		this._d += _point.x * c;
+		if (_center)
+			this.translate(_center.negate());
 		return this;
 	},
 
@@ -385,7 +379,7 @@ var Matrix = this.Matrix = Base.extend(/** @lends Matrix# */{
 		var x = point.x,
 			y = point.y;
 		if (!dest)
-			dest = new Point(Point.dont);
+			dest = Base.create(Point);
 		return dest.set(
 			x * this._a + y * this._b + this._tx,
 			x * this._c + y * this._d + this._ty,
@@ -432,7 +426,7 @@ var Matrix = this.Matrix = Base.extend(/** @lends Matrix# */{
 				max[j] = val;
 		}
 		if (!dest)
-			dest = new Rectangle(Rectangle.dont);
+			dest = Base.create(Rectangle);
 		return dest.set(min[0], min[1], max[0] - min[0], max[1] - min[1],
 				dontNotify);
 	},
@@ -452,7 +446,7 @@ var Matrix = this.Matrix = Base.extend(/** @lends Matrix# */{
 	 */
 	_getDeterminant: function() {
 		var det = this._a * this._d - this._b * this._c;
-		return isFinite(det) && Math.abs(det) > Numerical.EPSILON
+		return isFinite(det) && !Numerical.isZero(det)
 				&& isFinite(this._tx) && isFinite(this._ty)
 				? det : null;
 	},
@@ -464,7 +458,7 @@ var Matrix = this.Matrix = Base.extend(/** @lends Matrix# */{
 		var x = point.x - this._tx,
 			y = point.y - this._ty;
 		if (!dest)
-			dest = new Point(Point.dont);
+			dest = Base.create(Point);
 		return dest.set(
 			(x * this._d - y * this._b) / det,
 			(y * this._a - x * this._c) / det,
@@ -477,6 +471,7 @@ var Matrix = this.Matrix = Base.extend(/** @lends Matrix# */{
 	},
 
 	getScaling: function() {
+		// http://math.stackexchange.com/questions/13150/
 		var hor = Math.sqrt(this._a * this._a + this._c * this._c),
 			ver = Math.sqrt(this._b * this._b + this._d * this._d);
 		return Point.create(this._a < 0 ? -hor : hor, this._b < 0 ? -ver : ver);
@@ -493,7 +488,7 @@ var Matrix = this.Matrix = Base.extend(/** @lends Matrix# */{
 	getRotation: function() {
 		var angle1 = -Math.atan2(this._b, this._d),
 			angle2 = Math.atan2(this._c, this._a);
-		return Math.abs(angle1 - angle2) < Numerical.TOLERANCE
+		return Math.abs(angle1 - angle2) < Numerical.EPSILON
 				? angle1 * 180 / Math.PI : undefined;
 	},
 
@@ -628,7 +623,7 @@ var Matrix = this.Matrix = Base.extend(/** @lends Matrix# */{
 	statics: /** @lends Matrix */{
 		// See Point.create()
 		create: function(a, c, b, d, tx, ty) {
-			return new Matrix(Matrix.dont).set(a, c, b, d, tx, ty);
+			return Base.create(Matrix).set(a, c, b, d, tx, ty);
 		},
 
 		/**

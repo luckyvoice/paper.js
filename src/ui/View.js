@@ -47,7 +47,7 @@ var View = this.View = Base.extend(Callback, /** @lends View# */{
 								that._element);
 					}
 					var now = Date.now() / 1000,
-					 	delta = before ? now - before : 0;
+						delta = before ? now - before : 0;
 					// delta: Time elapsed since last redraw in seconds
 					// time: Time since first call of frame() in seconds
 					// Use Base.merge to convert into a Base object,
@@ -92,20 +92,17 @@ var View = this.View = Base.extend(Callback, /** @lends View# */{
 		if (this._id == null)
 			element.setAttribute('id', this._id = 'view-' + View._id++);
 		// Install event handlers
-		DomEvent.add(element, this._handlers);
+		DomEvent.add(element, this._viewHandlers);
 		// If the element has the resize attribute, resize the it to fill the
 		// window and resize it again whenever the user resizes the window.
-		// LV: Disabled since no PaperScript
-		/* if (PaperScript.hasAttribute(element, 'resize')) {
+		if (PaperScript.hasAttribute(element, 'resize')) {
 			// Subtract element' viewport offset from the total size, to
 			// stretch it in
 			var offset = DomElement.getOffset(element, true),
 				that = this;
 			size = DomElement.getViewportBounds(element)
 					.getSize().subtract(offset);
-			element.width = size.width;
-			element.height = size.height;
-			DomEvent.add(window, {
+			this._windowHandlers = {
 				resize: function(event) {
 					// Only update element offset if it's not invisible, as
 					// otherwise the offset would be wrong.
@@ -116,7 +113,8 @@ var View = this.View = Base.extend(Callback, /** @lends View# */{
 					that.setViewSize(DomElement.getViewportBounds(element)
 							.getSize().subtract(offset));
 				}
-			});
+			};
+			DomEvent.add(window, this._windowHandlers);
 		} else { */
 			// If the element is invisible, we cannot directly access
 			// element.width / height, because they would appear 0. Reading
@@ -125,7 +123,12 @@ var View = this.View = Base.extend(Callback, /** @lends View# */{
 				? Size.create(parseInt(element.getAttribute('width')),
 						parseInt(element.getAttribute('height')))
 				: DomElement.getSize(element);
-		/*}
+		}
+		// Set canvas size even if we just deterined the size from it, since
+		// it might have been set to a % size, in which case it would use some
+		// default internal size (300x150 on WebKit) and scale up the pixels.
+		element.width = size.width;
+		element.height = size.height;
 		// TODO: Test this on IE:
 		if (PaperScript.hasAttribute(element, 'stats')) {
 			this._stats = new Stats();
@@ -137,7 +140,7 @@ var View = this.View = Base.extend(Callback, /** @lends View# */{
 			style.left = offset.x + 'px';
 			style.top = offset.y + 'px';
 			document.body.appendChild(stats);
-		}*/
+		}
 /*#*/ } else if (options.server) {
 		// Generate an id for this view
 		this._id = 'view-' + View._id++;
@@ -172,7 +175,8 @@ var View = this.View = Base.extend(Callback, /** @lends View# */{
 		if (this._project.view == this)
 			this._project.view = null;
 		// Uninstall event handlers again for this view.
-		DomEvent.remove(this._element, this._handlers);
+		DomEvent.remove(this._element, this._viewHandlers);
+		DomEvent.remove(window, this._windowHandlers);
 		this._element = this._project = null;
 		// Removing all onFrame handlers makes the _onFrameCallback handler stop
 		// automatically through its uninstall method.
@@ -473,6 +477,7 @@ var View = this.View = Base.extend(Callback, /** @lends View# */{
 /*#*/ if (options.browser) {
 	var tool,
 		curPoint,
+		prevFocus,
 		tempFocus,
 		dragging = false;
 
@@ -508,7 +513,7 @@ var View = this.View = Base.extend(Callback, /** @lends View# */{
 		// CanvasView, and then handle the active tool, if any.
 		if (view._onMouseDown)
 			view._onMouseDown(event, curPoint);
-		if (tool = view._scope.tool)
+		if (tool = view._scope._tool)
 			tool._onHandleEvent('mousedown', curPoint, event);
 		// In the end we always call draw(), but pass checkRedraw = true, so we
 		// only redraw the view if anything has changed in the above calls.
@@ -524,10 +529,11 @@ var View = this.View = Base.extend(Callback, /** @lends View# */{
 			if (view) {
 				// Temporarily focus this view without making it sticky, so
 				// Key events are handled too during the mouse over
+				prevFocus = View._focused;
 				View._focused = tempFocus = view;
 			} else if (tempFocus && tempFocus == View._focused) {
 				// Clear temporary focus again and update it.
-				View._focused = null;
+				View._focused = prevFocus;
 				updateFocus();
 			}
 		}
@@ -536,7 +542,7 @@ var View = this.View = Base.extend(Callback, /** @lends View# */{
 		var point = event && viewToProject(view, event);
 		if (view._onMouseMove)
 			view._onMouseMove(event, point);
-		if (tool = view._scope.tool) {
+		if (tool = view._scope._tool) {
 			var onlyMove = !!(!tool.onMouseDrag && tool.onMouseMove);
 			if (dragging && !onlyMove) {
 				if ((curPoint = point || curPoint) 
@@ -593,7 +599,7 @@ var View = this.View = Base.extend(Callback, /** @lends View# */{
 	});
 
 	return {
-		_handlers: {
+		_viewHandlers: {
 			mousedown: mousedown,
 			touchstart: mousedown,
 			selectstart: selectstart

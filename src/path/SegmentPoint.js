@@ -51,7 +51,7 @@ var SegmentPoint = Point.extend({
 		// Provide our own version of Point#isZero() that does not use the x / y
 		// accessors but the internal properties directly, for performance
 		// reasons, since it is used a lot internally.
-		return this._x == 0 && this._y == 0;
+		return Numerical.isZero(this._x) && Numerical.isZero(this._y);
 	},
 
 	setSelected: function(selected) {
@@ -64,7 +64,7 @@ var SegmentPoint = Point.extend({
 
 	statics: {
 		create: function(segment, key, pt) {
-			var point = new SegmentPoint(SegmentPoint.dont),
+			var point = Base.create(SegmentPoint),
 				x, y, selected;
 			if (!pt) {
 				x = y = 0;
@@ -73,7 +73,7 @@ var SegmentPoint = Point.extend({
 			} else {
 				// If not Point-like already, read Point from pt = 3rd argument
 				if ((x = pt.x) === undefined) {
-					pt = Point.read(arguments, 2, 1);
+					pt = Point.read(arguments, 2);
 					x = pt.x;
 				}
 				y = pt.y;

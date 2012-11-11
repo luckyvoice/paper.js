@@ -52,7 +52,8 @@ var Key = this.Key = new function() {
 		control: false,
 		option: false,
 		command: false,
-		capsLock: false
+		capsLock: false,
+		space: false
 	}),
 
 	// Since only keypress gets proper keyCodes that are actually representing
@@ -71,7 +72,7 @@ var Key = this.Key = new function() {
 			type = down ? 'keydown' : 'keyup',
 			view = View._focused,
 			scope = view && view.isVisible() && view._scope,
-			tool = scope && scope.tool;
+			tool = scope && scope._tool;
 		keyMap[key] = down;
 		if (tool && tool.responds(type)) {
 			// Call the onKeyDown or onKeyUp handler if present

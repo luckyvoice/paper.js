@@ -89,7 +89,11 @@ var TextItem = this.TextItem = Item.extend(/** @lends TextItem# */{
 	setContent: function(content) {
 		this._content = '' + content;
 		this._lines = this._content.split(/\r\n|\n|\r/mg);
-		this._changed(Change.CONTENT);
+		this._changed(/*#=*/ Change.CONTENT);
+	},
+
+	isEmpty: function() {
+		return !!this._content;
 	},
 
 	/**

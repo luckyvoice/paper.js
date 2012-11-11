@@ -47,14 +47,18 @@ var paper = new function() {
 // Inline Bootstrap core (the Base class) inside the paper scope first:
 /*#*/ include('../lib/bootstrap.js');
 
+/*#*/ if (options.version == 'dev') {
+/*#*/ include('constants.js');
+/*#*/ } // options.version == 'dev'
+
 /*#*/ if (options.stats) {
 /*#*/ include('../lib/stats.js');
 /*#*/ } // options.stats
 
 /*#*/ include('core/Base.js');
+/*#*/ include('core/Callback.js');
 /*#*/ include('core/PaperScope.js');
 /*#*/ include('core/PaperScopeItem.js');
-/*#*/ include('core/Callback.js');
 
 // Include Paper classes, which are later injected into PaperScope by setting
 // them on the 'this' object, e.g.:
@@ -69,7 +73,6 @@ var paper = new function() {
 /*#*/ include('project/Project.js');
 /*#*/ include('project/Symbol.js');
 
-/*#*/ include('item/ChangeFlag.js');
 /*#*/ include('item/Item.js');
 /*#*/ include('item/Group.js');
 /*#*/ include('item/Layer.js');
@@ -80,7 +83,6 @@ var paper = new function() {
 
 /*#*/ include('path/Segment.js');
 /*#*/ include('path/SegmentPoint.js');
-/*#*/ include('path/SelectionState.js');
 /*#*/ include('path/Curve.js');
 /*#*/ include('path/CurveLocation.js');
 /*#*/ include('path/PathItem.js');
@@ -92,6 +94,10 @@ var paper = new function() {
 
 /*#*/ include('text/TextItem.js');
 /*#*/ include('text/PointText.js');
+
+/*#*/ include('svg/SvgStyles.js');
+/*#*/ include('svg/SvgExport.js');
+/*#*/ include('svg/SvgImport.js');
 
 /*#*/ include('style/Style.js');
 /*#*/ include('style/PathStyle.js');

@@ -319,7 +319,7 @@ var Curve = this.Curve = Base.extend(/** @lends Curve# */{
 			crossings = 0;
 		for (var i = 0; i < num; i++) {
 			var t = roots[i];
-			if (t >= 0 && t < 1 && Curve.evaluate(vals, t, 0).x > point.x) {
+			if (t >= 0 && t <= 1 && Curve.evaluate(vals, t, 0).x > point.x) {
 				// If we're close to 0 and are not changing y-direction from the
 				// previous curve, do not count this root, as we're merely
 				// touching a tip. Passing 1 for Curve.evaluate()'s type means
@@ -376,7 +376,7 @@ var Curve = this.Curve = Base.extend(/** @lends Curve# */{
 
 	statics: {
 		create: function(path, segment1, segment2) {
-			var curve = new Curve(Curve.dont);
+			var curve = Base.create(Curve);
 			curve._path = path;
 			curve._segment1 = segment1;
 			curve._segment2 = segment2;
@@ -388,12 +388,12 @@ var Curve = this.Curve = Base.extend(/** @lends Curve# */{
 				h1 = segment1._handleOut,
 				h2 = segment2._handleIn,
 				p2 = segment2._point;
-    		return [
-    			p1._x, p1._y,
-    			p1._x + h1._x, p1._y + h1._y,
-    			p2._x + h2._x, p2._y + h2._y,
-    			p2._x, p2._y
-    		];
+			return [
+				p1._x, p1._y,
+				p1._x + h1._x, p1._y + h1._y,
+				p2._x + h2._x, p2._y + h2._y,
+				p2._x, p2._y
+			];
 		},
 
 		evaluate: function(v, t, type) {
@@ -539,7 +539,7 @@ var Curve = this.Curve = Base.extend(/** @lends Curve# */{
 
 		isFlatEnough: function(v) {
 			// Thanks to Kaspar Fischer for the following:
-			// http://www.inf.ethz.ch/personal/fischerk/pubs/bez.pdf
+			// http://hcklbrrfnn.files.wordpress.com/2012/08/bez.pdf
 			var p1x = v[0], p1y = v[1],
 				c1x = v[2], c1y = v[3],
 				c2x = v[4], c2y = v[5],
@@ -665,7 +665,7 @@ var Curve = this.Curve = Base.extend(/** @lends Curve# */{
 	  */
 	function toBezierForm(v, point) {
 		var n = 3, // degree of B(t)
-	 		degree = 5, // degree of B(t) . P
+			degree = 5, // degree of B(t) . P
 			c = [],
 			d = [],
 			cd = [],
@@ -724,10 +724,7 @@ var Curve = this.Curve = Base.extend(/** @lends Curve# */{
 			// with x-axis.
 			if (isFlatEnough(w)) {
 				var line = new Line(w[0], w[5], true);
-				// Compare the line's squared length with EPSILON. If we're
-				// below, #intersect() will return null because of division
-				// by near-zero.
-				return [ line.vector.getLength(true) <= Numerical.EPSILON
+				return [ Numerical.isZero(line.vector.getLength(true))
 						? line.point.x
 						: xAxis.intersect(line).x ];
 			}

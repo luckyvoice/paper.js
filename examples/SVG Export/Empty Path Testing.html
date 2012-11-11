@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<title>Empty Path Testing</title>
+	<link rel="stylesheet" href="../css/style.css">
+	<script type="text/javascript" src="../../dist/paper.js"></script>
+
+</head>
+<body>	
+	<canvas id="canvas" width="500px" height="500px"></canvas>
+	<script type="text/paperscript" canvas="canvas">
+		var path = new Path();
+		path.strokeColor = 'black';
+		path.add(new Point(30, 30));
+		path.add(new Point(100, 100));
+		
+		var segments = [new Point(30, 90), new Point(100, 150)];
+		var path2 = new Path(segments);
+		path2.strokeColor = 'yellow';
+		
+		document.getElementById('svg').appendChild(project.exportSvg());
+	</script>
+	<svg id="svg" style="width: 500px; height: 500px"></svg>
+</body>
+</html>

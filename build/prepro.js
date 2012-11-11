@@ -21,42 +21,22 @@
  * or compile time. Very useful for libraries that are built for distribution,
  * but can be also compiled from seperate sources directly for development,
  * supporting build time switches.
+ *
+ * Arguments:
+ *  -d DEFINE_JSON -- define a json containing defintions availabe to prepro
+ *  -i INCLUDE_JS -- include a JS file containing definitinos availabe to prepro
+ *  -c -- strip comments
  */
 
 // Required libs
 
 var fs = require('fs'),
-	path = require('path');
-
-// Parse arguments
-
-var args = process.argv.slice(2),
-	options = {},
-	files = [],
-	strip = false;
-
-while (args.length > 0) {
-	var arg = args.shift();
-	switch (arg) {
-	case '-d':
-		// Definitions are provided as JSON and supposed to be object literals
-		var def = JSON.parse(args.shift());
-		// Merge new definitions into options object.
-		for (var key in def)
-			options[key] = def[key];
-		break;	
-	case '-c':
-		strip = true;
-		break;
-	default:
-		files.push(arg);
-	}
-}
+	path = require('path'),
+	vm = require('vm');
 
 // Preprocessing
 
-var code = [],
-	out = [];
+var code = [];
 
 function include(base, file) {
 	// Compose a pathname from base and file, which is specified relatively,
@@ -80,11 +60,11 @@ function include(base, file) {
 			}
 		} else {
 			// Perhaps we need to replace some values? Supported formats are:
-			// /*#=*/ options.NAME (outside comments)
-			// *#=* options.NAME (inside comments)
-			line = line.replace(/\/?\*#=\*\/?\s*options\.([\w]*)/g,
-				function(all, name) {
-					return options[name];
+			// /*#=*/ eval (outside comments)
+			// *#=* eval (inside comments)
+			line = line.replace(/\/?\*#=\*\/?\s*([\w.]*)/g,
+				function(all, val) {
+					return eval(val);
 				}
 			);
 			// Now add a statement that when evaluated writes out this code line
@@ -93,16 +73,57 @@ function include(base, file) {
 	});
 }
 
+function parse() {
+	var out = [];
+	// Evaluate the collected code: Collects result in out, through out.push() 
+	eval(code.join('\n'));
+	// Start again with a new code buffer.
+	code = [];
+	// Return the resulting lines as one string.
+	return out.join('\n');
+}
+
+// Parse arguments
+
+var args = process.argv.slice(2),
+	options = {},
+	files = [],
+	strip = false;
+
+while (args.length > 0) {
+	var arg = args.shift();
+	switch (arg) {
+	case '-d':
+		// Definitions are provided as JSON and supposed to be object literals
+		var def = JSON.parse(args.shift());
+		// Merge new definitions into options object.
+		for (var key in def)
+			options[key] = def[key];
+		break;
+	case '-i':
+		// Include code to be present at prepro time, e.g. for on-the-fly
+		// replacement of constants, using /*#=*/ statements.
+		// Luckily we can reuse the include() / parse() functionality to do so:
+		var file = args.shift();
+		if (file) {
+			include(path.resolve(), path.normalize(file));
+			eval(parse());
+		}
+		break;
+	case '-c':
+		strip = true;
+		break;
+	default:
+		files.push(arg);
+	}
+}
+
 // Include all files. Everything else happens from there, through include()
 files.forEach(function(file) {
 	include(path.resolve(), file);
 });
 
-// Evaluate the resulting code: Calls puts() and writes the result to stdout.
-eval(code.join('\n'));
-
-// Convert the resulting lines to one string again.
-var out = out.join('\n');
+var out = parse();
 
 if (strip) {
 	out = stripComments(out);
@@ -125,22 +146,23 @@ process.stdout.write(out);
  * http://james.padolsey.com/javascript/removing-comments-in-javascript/
 */
 function stripComments(str) {
+	// Add some padding so we can always look ahead and behind by two chars
 	str = ('__' + str + '__').split('');
-	var singleQuote = false,
-		doubleQuote = false,
+	var quote = false,
+		quoteSign,
 		blockComment = false,
 		lineComment = false,
 		preserveComment = false;
 	for (var i = 0, l = str.length; i < l; i++) {
-		if (singleQuote) {
-			if (str[i] == "'" && str[i - 1] !== '\\')
-				singleQuote = false;
-		} else if (doubleQuote) {
-			if (str[i] == '"' && str[i - 1] !== '\\')
-				doubleQuote = false;
+		if (quote) {
+			// When checking for quote escaping, we also need to check that the
+			// escape sign itself is not escaped, as otherwise '\\' would cause
+			// the wrong impression of and endlessly open string:
+			if (str[i] === quoteSign && (str[i - 1] !== '\\' || str[i - 2] === '\\'))
+				quote = false;
 		} else if (blockComment) {
 			// Is the block comment closing?
-			if (str[i] == '*' && str[i + 1] == '/') {
+			if (str[i] === '*' && str[i + 1] === '/') {
 				if (!preserveComment)
 					str[i] = str[i + 1] = '';
 				blockComment = preserveComment = false;
@@ -149,26 +171,28 @@ function stripComments(str) {
 			}
 		} else if (lineComment) {
 			// One-line comments end with the line-break
-			if (str[i + 1] == '\n' || str[i + 1] == '\r')
+			if (/[\n\r]/.test(str[i + 1]))
 				lineComment = false;
 			str[i] = '';
 		} else {
-			doubleQuote = str[i] == '"';
-			singleQuote = str[i] == "'";
-			if (!blockComment && str[i] == '/') {
-				if (str[i + 1] == '*') {
-					// Do not filter out conditional comments and comments marked
-					// as protected (/*! */)
-					preserveComment = str[i + 2] == '@' || str[i + 2] == '!';
+			quote = /['"]/.test(str[i]);
+			if (quote)
+				quoteSign = str[i];
+			if (!blockComment && str[i] === '/') {
+				if (str[i + 1] === '*') {
+					// Do not filter out conditional comments /*@ ... */
+					// and comments marked as protected /*! ... */
+					preserveComment = /[@!]/.test(str[i + 2]);
 					if (!preserveComment)
 						str[i] = '';
 					blockComment = true;
-				} else if (str[i + 1] == '/') {
+				} else if (str[i + 1] === '/') {
 					str[i] = '';
 					lineComment = true;
 				}
-	 		}
+			}
 		}
- 	}
+	}
+	// Remove padding again.
 	return str.join('').slice(2, -2);
 }

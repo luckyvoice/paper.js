@@ -23,6 +23,7 @@
  * @extends PlacedItem
  */
 var PlacedSymbol = this.PlacedSymbol = PlacedItem.extend(/** @lends PlacedSymbol# */{
+	_type: 'placedsymbol',
 	/**
 	 * Creates a new PlacedSymbol Item.
 	 *
@@ -83,6 +84,10 @@ var PlacedSymbol = this.PlacedSymbol = PlacedItem.extend(/** @lends PlacedSymbol
 		this._symbol = symbol;
 		// Add to the new one's
 		symbol._instances[this._id] = this;
+	},
+
+	isEmpty: function() {
+		return this._symbol._definition.isEmpty();
 	},
 
 	clone: function() {

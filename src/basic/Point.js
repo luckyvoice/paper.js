@@ -28,6 +28,9 @@
  * console.log(point.y); // 5
  */
 var Point = this.Point = Base.extend(/** @lends Point# */{
+	// Tell Base.read that the Point constructor supporst reading with index
+	_readIndex: true,
+
 	/**
 	 * Creates a Point object with the given x and y coordinates.
 	 *
@@ -130,32 +133,38 @@ var Point = this.Point = Base.extend(/** @lends Point# */{
 	 * @name Point#initialize
 	 */
 	initialize: function(arg0, arg1) {
-		if (arg1 !== undefined) {
+		var type = typeof arg0;
+		if (type === 'number') {
+			var hasY = typeof arg1 === 'number';
 			this.x = arg0;
-			this.y = arg1;
-		} else if (arg0 !== undefined) {
-			if (arg0 == null) {
-				this.x = this.y = 0;
-			} else if (arg0.x !== undefined) {
+			this.y = hasY ? arg1 : arg0;
+			if (this._read)
+				this._read = hasY ? 2 : 1;
+		} else if (type === 'undefined' || arg0 === null) {
+			this.x = this.y = 0;
+			if (this._read)
+				this._read = arg0 === null ? 1 : 0;
+		} else {
+			if (typeof arg0.x !== 'undefined') {
 				this.x = arg0.x;
 				this.y = arg0.y;
-			} else if (arg0.width !== undefined) {
-				this.x = arg0.width;
-				this.y = arg0.height;
 			} else if (Array.isArray(arg0)) {
 				this.x = arg0[0];
 				this.y = arg0.length > 1 ? arg0[1] : arg0[0];
-			} else if (arg0.angle !== undefined) {
+			} else if (typeof arg0.width !== 'undefined') {
+				this.x = arg0.width;
+				this.y = arg0.height;
+			} else if (typeof arg0.angle !== 'undefined') {
 				this.x = arg0.length;
 				this.y = 0;
 				this.setAngle(arg0.angle);
-			} else if (typeof arg0 === 'number') {
-				this.x = this.y = arg0;
 			} else {
 				this.x = this.y = 0;
+				if (this._read)
+					this._read = 0;
 			}
-		} else {
-			this.x = this.y = 0;
+			if (this._read)
+				this._read = 1;
 		}
 	},
 
@@ -402,8 +411,8 @@ var Point = this.Point = Base.extend(/** @lends Point# */{
 	 * Returns the distance between the point and another point.
 	 *
 	 * @param {Point} point
-	 * @param {Boolean} squared Controls whether the distance should remain
-	 *        squared, or its square root should be calculated.
+	 * @param {Boolean} [squared=false] Controls whether the distance should
+	 *        remain squared, or its square root should be calculated.
 	 * @return {Number}
 	 */
 	getDistance: function(point, squared) {
@@ -542,7 +551,7 @@ var Point = this.Point = Base.extend(/** @lends Point# */{
 		} else {
 			var point = Point.read(arguments),
 				div = this.getLength() * point.getLength();
-			if (div == 0) {
+			if (Numerical.isZero(div)) {
 				return NaN;
 			} else {
 				return Math.acos(this.dot(point) / div);
@@ -612,6 +621,8 @@ var Point = this.Point = Base.extend(/** @lends Point# */{
 	 * @returns {Point} the rotated point
 	 */
 	rotate: function(angle, center) {
+		if (angle === 0)
+			return this.clone();
 		angle = angle * Math.PI / 180;
 		var point = center ? this.subtract(center) : this,
 			s = Math.sin(angle),
@@ -692,7 +703,7 @@ var Point = this.Point = Base.extend(/** @lends Point# */{
 	 * @returns {Boolean} {@true both x and y are 0}
 	 */
 	isZero: function() {
-		return this.x == 0 && this.y == 0;
+		return Numerical.isZero(this.x) && Numerical.isZero(this.y);
 	},
 
 	/**
@@ -769,8 +780,8 @@ var Point = this.Point = Base.extend(/** @lends Point# */{
 		create: function(x, y) {
 			// Don't use the shorter form as we want absolute maximum
 			// performance here:
-			// return new Point(Point.dont).set(x, y);
-			var point = new Point(Point.dont);
+			// return Base.create(Point).set(x, y);
+			var point = Base.create(Point);
 			point.x = x;
 			point.y = y;
 			return point;
@@ -792,11 +803,11 @@ var Point = this.Point = Base.extend(/** @lends Point# */{
 		 * console.log(minPoint); // {x: 10, y: 5}
 		 */
 		min: function(point1, point2) {
-			point1 = Point.read(arguments, 0, 1);
-			point2 = Point.read(arguments, 1, 1);
+			var _point1 = Point.read(arguments);
+				_point2 = Point.read(arguments);
 			return Point.create(
-				Math.min(point1.x, point2.x),
-				Math.min(point1.y, point2.y)
+				Math.min(_point1.x, _point2.x),
+				Math.min(_point1.y, _point2.y)
 			);
 		},
 
@@ -816,11 +827,11 @@ var Point = this.Point = Base.extend(/** @lends Point# */{
 		 * console.log(maxPoint); // {x: 200, y: 100}
 		 */
 		max: function(point1, point2) {
-			point1 = Point.read(arguments, 0, 1);
-			point2 = Point.read(arguments, 1, 1);
+			var _point1 = Point.read(arguments);
+				_point2 = Point.read(arguments);
 			return Point.create(
-				Math.max(point1.x, point2.x),
-				Math.max(point1.y, point2.y)
+				Math.max(_point1.x, _point2.x),
+				Math.max(_point1.y, _point2.y)
 			);
 		},
 
@@ -955,7 +966,7 @@ var LinkedPoint = Point.extend({
 			// See e.g. Rectangle#getPoint(true).
 			if (dontLink)
 				return Point.create(x, y);
-			var point = new LinkedPoint(LinkedPoint.dont);
+			var point = Base.create(LinkedPoint);
 			point._x = x;
 			point._y = y;
 			point._owner = owner;

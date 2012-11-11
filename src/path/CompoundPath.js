@@ -25,6 +25,7 @@
  * @extends PathItem
  */
 var CompoundPath = this.CompoundPath = PathItem.extend(/** @lends CompoundPath# */{
+	_type: 'compoundpath',
 	/**
 	 * Creates a new compound path item and places it in the active layer.
 	 *
@@ -47,19 +48,21 @@ var CompoundPath = this.CompoundPath = PathItem.extend(/** @lends CompoundPath# 
 		this._namedChildren = {};
 		// Do not reassign to paths, since arguments would get modified, which
 		// we potentially use as array, depending on what is passed.
-		var items = !paths || !Array.isArray(paths)
-				|| typeof paths[0] !== 'object' ? arguments : paths;
-		this.addChildren(items);
+		this.addChildren(Array.isArray(paths) ? paths : arguments);
 	},
 
 	insertChild: function(index, item) {
-		this.base(index, item);
+		// Only allow the insertion of paths
+		if (!(item instanceof Path))
+			return null;
+		var res = this.base(index, item);
 		// All children except for the bottom one (first one in list) are set
 		// to anti-clockwise orientation, so that they appear as holes, but
 		// only if their orientation was not already specified before
 		// (= _clockwise is defined).
-		if (item._clockwise === undefined)
+		if (res && item._clockwise === undefined)
 			item.setClockwise(item._index == 0);
+		return res;
 	},
 
 	/**
@@ -67,9 +70,9 @@ var CompoundPath = this.CompoundPath = PathItem.extend(/** @lends CompoundPath# 
 	 * the path is moved outside and the compound path is erased.
 	 * Otherwise, the compound path is returned unmodified.
 	 *
-	 * @return {CompoundPath|Path} the simplified compound path
+	 * @return {CompoundPath|Path} the flattened compound path
 	 */
-	simplify: function() {
+	flatten: function() {
 		if (this._children.length == 1) {
 			var child = this._children[0];
 			child.insertAbove(this);
@@ -84,23 +87,47 @@ var CompoundPath = this.CompoundPath = PathItem.extend(/** @lends CompoundPath# 
 			this._children[i].smooth();
 	},
 
+	isEmpty: function() {
+		return this._children.length == 0;
+	},
+
+	contains: function(point) {
+		point = Point.read(arguments);
+		var count = 0;
+		for (var i = 0, l = this._children.length; i < l; i++) {
+			if (this._children[i].contains(point))
+				count++;
+		}
+		return (count & 1) == 1;
+	},
+
+	_hitTest: function(point, options) {
+		return this.base(point, Base.merge(options, { fill: false }))
+			|| options.fill && this._style._fillColor && this.contains(point)
+				? new HitResult('fill', this)
+				: null;
+	},
+
 	draw: function(ctx, param) {
-		var children = this._children;
+		var children = this._children,
+			style = this._style;
 		// Return early if the compound path doesn't have any children:
 		if (children.length == 0)
 			return;
-		var firstChild = children[0],
-			style = firstChild._style;
 		ctx.beginPath();
 		param.compound = true;
 		for (var i = 0, l = children.length; i < l; i++)
 			Item.draw(children[i], ctx, param);
-		firstChild._setStyles(ctx);
-		if (style._fillColor)
-			ctx.fill();
-		if (style._strokeColor)
-			ctx.stroke();
 		param.compound = false;
+		if (this._clipMask) {
+			ctx.clip();
+		} else {
+			this._setStyles(ctx);
+			if (style._fillColor)
+				ctx.fill();
+			if (style._strokeColor)
+				ctx.stroke();
+		}
 	}
 }, new function() { // Injection scope for PostScript-like drawing functions
 	/**

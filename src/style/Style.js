@@ -36,9 +36,17 @@ var Style = Item.extend({
 		}, this);
 	},
 
+	/**
+	 * Returns the children to be used to unify style attributes, if any.
+	 */
+	_getChildren: function() {
+		// Only unify styles on children of Group items, excluding CompoundPath.
+		return this._item instanceof Group && this._item._children;
+	},
+
 	statics: {
 		create: function(item) {
-			var style = new this(this.dont);
+			var style = Base.create(this);
 			style._item = item;
 			return style;
 		},
@@ -62,40 +70,41 @@ var Style = Item.extend({
 			};
 
 			Base.each(src._defaults, function(value, key) {
-				var isColor = !!key.match(/Color$/),
+				var isColor = /Color$/.test(key),
 					part = Base.capitalize(key),
 					set = 'set' + part,
 					get = 'get' + part;
 				// Simply extend src with these getters and setters, to be
 				// injected into this class using this.base() further down.
 				src[set] = function(value) {
-					var children = this._item && this._item._children;
-					value = isColor ? Color.read(arguments) : value;
+					var children = this._getChildren();
+					// Clone color objects since they reference their owner
+					value = isColor ? Color.read(arguments, 0, 0, true) : value;
 					if (children) {
 						for (var i = 0, l = children.length; i < l; i++)
 							children[i][styleKey][set](value);
 					} else {
 						var old = this['_' + key];
-						if (old != value && !(old && old.equals
-									&& old.equals(value))) {
-							this['_' + key] = value;
+						if (!Base.equals(old, value)) {
 							if (isColor) {
 								if (old)
-									old._removeOwner(this._item);
-								if (value)
-									value._addOwner(this._item);
+									delete old._owner;
+								if (value) {
+									value._owner = this._item;
+								}
 							}
+							this['_' + key] = value;
 							// Notify the item of the style change STYLE is
 							// always set, additional flags come from _flags,
 							// as used for STROKE:
 							if (this._item)
-								this._item._changed(flags[key] || Change.STYLE);
+								this._item._changed(flags[key] || /*#=*/ Change.STYLE);
 						}
 					}
 					return this;
 				};
 				src[get] = function() {
-					var children = this._item && this._item._children,
+					var children = this._getChildren(),
 						style;
 					// If this item has children, walk through all of them and
 					// see if they all have the same style.
@@ -105,8 +114,7 @@ var Style = Item.extend({
 						var childStyle = children[i][styleKey][get]();
 						if (!style) {
 							style = childStyle;
-						} else if (style != childStyle && !(style
-								&& style.equals && style.equals(childStyle))) {
+						} else if (!Base.equals(style, childStyle)) {
 							// If there is another item with a different
 							// style, the style is not defined:
 							// PORT: Change this in Scriptographer

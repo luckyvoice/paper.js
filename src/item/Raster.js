@@ -22,6 +22,7 @@
  * @extends PlacedItem
  */
 var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
+	_type: 'raster',
 	// Raster doesn't make the distinction between the different bounds,
 	// so use the same name for all of them
 	_boundsType: 'bounds',
@@ -109,6 +110,10 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 		return this._size.height;
 	},
 
+	isEmpty: function() {
+		return this._size.width == 0 && this._size.height == 0;
+	},
+
 	/**
 	 * Pixels per inch of the raster at its current size.
 	 *
@@ -139,7 +144,7 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 		// to modify the Raster object. We can notify such changes ahead since
 		// they are only used afterwards for redrawing.
 		if (arguments[0])
-			this._changed(Change.PIXELS);
+			this._changed(/*#=*/ Change.PIXELS);
 		return this._context;
 	},
 
@@ -163,7 +168,7 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 		this._size = Size.create(canvas.width, canvas.height);
 		this._image = null;
 		this._context = null;
-		this._changed(Change.GEOMETRY | Change.PIXELS);
+		this._changed(/*#=*/ Change.GEOMETRY | /*#=*/ Change.PIXELS);
 	},
 
 	/**
@@ -188,7 +193,7 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 /*#*/ } // options.server
 		this._canvas = null;
 		this._context = null;
-		this._changed(Change.GEOMETRY);
+		this._changed(/*#=*/ Change.GEOMETRY);
 	},
 
 	// DOCS: document Raster#getSubImage
@@ -334,17 +339,16 @@ var Raster = this.Raster = PlacedItem.extend(/** @lends Raster# */{
 	 * @param color the color that the pixel will be set to
 	 */
 	setPixel: function(point, color) {
-		var hasPoint = arguments.length == 2;
-		point = Point.read(arguments, 0, hasPoint ? 1 : 2);
-		color = Color.read(arguments, hasPoint ? 1 : 2);
+		var _point = Point.read(arguments),
+			_color = Color.read(arguments);
 		var ctx = this.getContext(true),
 			imageData = ctx.createImageData(1, 1),
 			alpha = color.getAlpha();
-		imageData.data[0] = color.getRed() * 255;
-		imageData.data[1] = color.getGreen() * 255;
-		imageData.data[2] = color.getBlue() * 255;
+		imageData.data[0] = _color.getRed() * 255;
+		imageData.data[1] = _color.getGreen() * 255;
+		imageData.data[2] = _color.getBlue() * 255;
 		imageData.data[3] = alpha != null ? alpha * 255 : 255;
-		ctx.putImageData(imageData, point.x, point.y);
+		ctx.putImageData(imageData, _point.x, _point.y);
 	},
 
 	// DOCS: document Raster#createData
