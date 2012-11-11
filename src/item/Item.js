@@ -469,7 +469,7 @@ var Item = this.Item = Base.extend(Callback, /** @lends Item# */{
 		// On-the-fly conversion to boolean:
 		if (this._clipMask != (clipMask = !!clipMask)) {
 			this._clipMask = clipMask;
-			this._changed(Change.ATTRIBUTE);
+			this._changed(/*#=*/ Change.ATTRIBUTE);
 			// Tell the parent the clipping mask has changed
 			if (this._parent)
 				this._parent._changed(/*#=*/ ChangeFlag.CLIPPING);
