@@ -95,27 +95,33 @@ var View = this.View = Base.extend(Callback, /** @lends View# */{
 		DomEvent.add(element, this._viewHandlers);
 		// If the element has the resize attribute, resize the it to fill the
 		// window and resize it again whenever the user resizes the window.
-		if (PaperScript.hasAttribute(element, 'resize')) {
-			// Subtract element' viewport offset from the total size, to
-			// stretch it in
-			var offset = DomElement.getOffset(element, true),
-				that = this;
-			size = DomElement.getViewportBounds(element)
-					.getSize().subtract(offset);
-			this._windowHandlers = {
-				resize: function(event) {
-					// Only update element offset if it's not invisible, as
-					// otherwise the offset would be wrong.
-					if (!DomElement.isInvisible(element))
-						offset = DomElement.getOffset(element, true);
-					// Set the size now, which internally calls onResize
-					// and redraws the view
-					that.setViewSize(DomElement.getViewportBounds(element)
-							.getSize().subtract(offset));
-				}
-			};
-			DomEvent.add(window, this._windowHandlers);
-		} else { */
+		
+		/*  LV: Disabled since we don't use PaperScript
+		
+			if (PaperScript.hasAttribute(element, 'resize')) {
+				// Subtract element' viewport offset from the total size, to
+				// stretch it in
+				var offset = DomElement.getOffset(element, true),
+					that = this;
+				size = DomElement.getViewportBounds(element)
+						.getSize().subtract(offset);
+				this._windowHandlers = {
+					resize: function(event) {
+						// Only update element offset if it's not invisible, as
+						// otherwise the offset would be wrong.
+						if (!DomElement.isInvisible(element))
+							offset = DomElement.getOffset(element, true);
+						// Set the size now, which internally calls onResize
+						// and redraws the view
+						that.setViewSize(DomElement.getViewportBounds(element)
+								.getSize().subtract(offset));
+					}
+				};
+				DomEvent.add(window, this._windowHandlers);
+			} else {
+		
+		*/
+		
 			// If the element is invisible, we cannot directly access
 			// element.width / height, because they would appear 0. Reading
 			// the attributes still works though:
@@ -123,24 +129,32 @@ var View = this.View = Base.extend(Callback, /** @lends View# */{
 				? Size.create(parseInt(element.getAttribute('width')),
 						parseInt(element.getAttribute('height')))
 				: DomElement.getSize(element);
-		}
+		
+		// }
+		
 		// Set canvas size even if we just deterined the size from it, since
 		// it might have been set to a % size, in which case it would use some
 		// default internal size (300x150 on WebKit) and scale up the pixels.
 		element.width = size.width;
 		element.height = size.height;
-		// TODO: Test this on IE:
-		if (PaperScript.hasAttribute(element, 'stats')) {
-			this._stats = new Stats();
-			// Align top-left to the element
-			var stats = this._stats.domElement,
-				style = stats.style,
-				offset = DomElement.getOffset(element);
-			style.position = 'absolute';
-			style.left = offset.x + 'px';
-			style.top = offset.y + 'px';
-			document.body.appendChild(stats);
-		}
+		
+		/*  LV: Disabled since we don't use PaperScript
+		
+			// TODO: Test this on IE:
+			if (PaperScript.hasAttribute(element, 'stats')) {
+				this._stats = new Stats();
+				// Align top-left to the element
+				var stats = this._stats.domElement,
+					style = stats.style,
+					offset = DomElement.getOffset(element);
+				style.position = 'absolute';
+				style.left = offset.x + 'px';
+				style.top = offset.y + 'px';
+				document.body.appendChild(stats);
+			}
+		
+		*/
+		
 /*#*/ } else if (options.server) {
 		// Generate an id for this view
 		this._id = 'view-' + View._id++;
